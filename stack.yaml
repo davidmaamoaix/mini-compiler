@@ -3,3 +3,6 @@ resolver:
 
 packages:
 - .
+
+ghc-options:
+  llvm-hs: -optcxx=-std=c++11

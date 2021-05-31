@@ -1,2 +1,2 @@
 # Mini Compiler
-Mini compiler from a custom syntax to LLVM to demonstrate how IR and code gen works (for IB CS).
+Mini compiler from C0 to x86 ASM (for 15-411).
