@@ -1,6 +1,6 @@
-module Main where
-
-import Parser
+module Main (
+    main
+) where
 
 main :: IO ()
 main = putStrLn "someFunc"
