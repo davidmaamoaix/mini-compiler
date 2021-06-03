@@ -34,6 +34,22 @@ lexer = Token.makeTokenParser emptyDef {
         "&&", "||", "<<", ">>", "<", ">", "<=",
         ">=", "==", "!=", "!", "~", "-=", "+=",
         "*=", "/=", "%=", "&=", "|=", "^=", "<<=",
-        ">>=", "=", "++", "--"
+        ">>=", "=", "++", "--", ";", ".", "->"
     ]
 }
+
+
+integer :: Parser Integer
+integer = Token.integer lexer
+
+float :: Parser Double
+float = Token.float lexer
+
+identifier :: Parser String
+identifier = Token.identifier lexer
+
+reserved :: String -> Parser ()
+reserved = Token.reserved lexer
+
+operator :: String -> Parser ()
+operator = Token.reservedOp lexer
