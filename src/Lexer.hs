@@ -74,6 +74,11 @@ stringParser = flip (,) <$> getPosition <*> between (char '"') (char '"') conten
     where
         content = StringLit <$> many sCharParser
 
+charParser :: Parser TokenPos
+charParser = flip (,) <$> getPosition <*> (CharLit <$> between (char '\'') (char '\'') content)
+    where
+        content = sCharParser <|> char '"' <|> char '\0'
+
 tokenParser :: Parser TokenPos
 tokenParser = choice [ idParser
                      , intParser
