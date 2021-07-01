@@ -1,55 +1,50 @@
 module Lexer where
 
-import Text.Parsec.String
-import Text.Parsec.Language
+import Control.Applicative hiding (many, (<|>))
+import Text.ParserCombinators.Parsec hiding (token, tokens)
 
-import qualified Text.Parsec.Token as Token
+data VarType = Int
+             | Bool
+             | String
+             | Char
+             deriving (Eq, Show)
 
-lexer :: Token.TokenParser ()
-lexer = Token.makeTokenParser emptyDef {
-    Token.commentLine = "//",
-    Token.commentStart = "/*",
-    Token.commentEnd = "*/",
-    Token.caseSensitive = True,
-    Token.reservedNames = [
-        "true",
-        "false",
-        "NULL",
-        "alloc",
-        "alloc_array",
-        "return",
-        "break",
-        "continue",
-        "if",
-        "while",
-        "for",
-        "struct",
-        "void",
-        "bool",
-        "int",
-        "typedef"
-    ],
-    Token.reservedOpNames = [
-        "+", "-", "*", "/", "%", "&", "|", "^",
-        "&&", "||", "<<", ">>", "<", ">", "<=",
-        ">=", "==", "!=", "!", "~", "-=", "+=",
-        "*=", "/=", "%=", "&=", "|=", "^=", "<<=",
-        ">>=", "=", "++", "--", ";", ".", "->"
-    ]
-}
+data Token = Identifier String
+           | Number Int
+           | StringLit String
+           | CharLit Char
+           | BoolLit Bool
+           | Type VarType
+           | UnOp String
+           | BinOp String
+           | AsnOp String
+           | Struct
+           | TypeDef
+           | If
+           | Else
+           | While
+           | For
+           | Continue
+           | Break
+           | Return
+           | Assert
+           | NULL
+           | Alloc
+           | AllocArray
+           deriving (Eq, Show)
 
+type TokenPos = (Token, SourcePos)
 
-integer :: Parser Integer
-integer = Token.integer lexer
+identifier :: Parser TokenPos
+identifier = do
+    let first = ['A'..'Z'] ++ ['a'..'z'] ++ "_"
+        rest = first ++ ['0'..'9']
 
-float :: Parser Double
-float = Token.float lexer
+    pos <- getPosition
+    firstChar <- oneOf first
+    restChar <- many $ oneOf rest
+    spaces
+    return (Identifier $ firstChar : restChar, pos)
 
-identifier :: Parser String
-identifier = Token.identifier lexer
-
-reserved :: String -> Parser ()
-reserved = Token.reserved lexer
-
-operator :: String -> Parser ()
-operator = Token.reservedOp lexer
+testLexer :: Parser TokenPos -> String -> Either ParseError TokenPos
+testLexer lexer = parse lexer "(stdio)"
