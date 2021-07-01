@@ -1,5 +1,7 @@
 module Lexer where
 
+import Text.Parsec
+import Text.Parsec.Token
 import Control.Applicative hiding (many, (<|>))
 import Text.ParserCombinators.Parsec hiding (token, tokens)
 
@@ -31,9 +33,25 @@ data Token = Identifier String
            | NULL
            | Alloc
            | AllocArray
+           | LBrace
+           | RBrace
+           | Semicolon
            deriving (Eq, Show)
 
 type TokenPos = (Token, SourcePos)
+type ParserP a = Parsec [TokenPos] () a
+
+parserPos :: Parser Token -> Parser TokenPos
+parserPos p = (,) <$> p <*> getPosition
+
+nextPos :: SourcePos -> a -> [TokenPos] -> SourcePos
+nextPos x _ [] = x
+nextPos _ _ ((_, x) : _) = x
+
+satisfyP :: (Token -> Bool) -> ParserP Token
+satisfyP f = tokenPrim show nextPos result
+    where
+        result = \x -> if f $ fst x then Just $ fst x else Nothing
 
 identifier :: Parser TokenPos
 identifier = do
