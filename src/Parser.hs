@@ -1,8 +1,23 @@
 module Parser where
 
+import Lexer
+
 import Control.Monad
 import Control.Applicative hiding (many, (<|>))
+
+import Text.Parsec
 import Text.ParserCombinators.Parsec
+
+type ParserP a = Parsec [TokenPos] () a
+
+nextPos :: SourcePos -> a -> [TokenPos] -> SourcePos
+nextPos x _ [] = x
+nextPos _ _ ((_, x) : _) = x
+
+satisfyP :: (Token -> Bool) -> ParserP Token
+satisfyP f = tokenPrim show nextPos result
+    where
+        result = \x -> if f $ fst x then Just $ fst x else Nothing
 
 data JValue = JArray [JValue]
             | JNumber Integer

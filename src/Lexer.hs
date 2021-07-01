@@ -2,8 +2,9 @@ module Lexer where
 
 import Text.Parsec
 import Text.Parsec.Token
-import Control.Applicative hiding (many, (<|>))
 import Text.ParserCombinators.Parsec hiding (token, tokens)
+
+import Control.Applicative hiding (many, (<|>))
 
 data VarType = Int
              | Bool
@@ -12,7 +13,7 @@ data VarType = Int
              deriving (Eq, Show)
 
 data Token = Identifier String
-           | Number Int
+           | NumberLit Int
            | StringLit String
            | CharLit Char
            | BoolLit Bool
@@ -39,22 +40,12 @@ data Token = Identifier String
            deriving (Eq, Show)
 
 type TokenPos = (Token, SourcePos)
-type ParserP a = Parsec [TokenPos] () a
 
 parserPos :: Parser Token -> Parser TokenPos
 parserPos p = (,) <$> p <*> getPosition
 
-nextPos :: SourcePos -> a -> [TokenPos] -> SourcePos
-nextPos x _ [] = x
-nextPos _ _ ((_, x) : _) = x
-
-satisfyP :: (Token -> Bool) -> ParserP Token
-satisfyP f = tokenPrim show nextPos result
-    where
-        result = \x -> if f $ fst x then Just $ fst x else Nothing
-
-identifier :: Parser TokenPos
-identifier = do
+idParser :: Parser TokenPos
+idParser = do
     let first = ['A'..'Z'] ++ ['a'..'z'] ++ "_"
         rest = first ++ ['0'..'9']
 
@@ -63,6 +54,34 @@ identifier = do
     restChar <- many $ oneOf rest
     spaces
     return (Identifier $ firstChar : restChar, pos)
+
+intParser :: Parser TokenPos
+intParser = flip (,) <$> getPosition <*> (NumberLit <$> readNum)
+    where
+        readNum = read <$> (return <$> char '0' <|> many1 digit)
+
+escape :: Parser Char
+escape = char '\\' *> oneOf "\\\""
+
+nonEscape :: Parser Char
+nonEscape = noneOf "\\\""
+
+sCharParser :: Parser Char
+sCharParser = nonEscape <|> escape
+
+stringParser :: Parser TokenPos
+stringParser = flip (,) <$> getPosition <*> between (char '"') (char '"') content
+    where
+        content = StringLit <$> many sCharParser
+
+tokenParser :: Parser TokenPos
+tokenParser = choice [ idParser
+                     , intParser
+                     , stringParser
+                     ]
+
+tokens :: Parser [TokenPos]
+tokens = spaces *> many (tokenParser <* spaces)
 
 testLexer :: Parser TokenPos -> String -> Either ParseError TokenPos
 testLexer lexer = parse lexer "(stdio)"
