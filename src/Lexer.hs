@@ -5,7 +5,7 @@ import qualified Data.Map as Map
 
 import Text.Parsec
 import Text.Parsec.Token
-import Text.ParserCombinators.Parsec hiding (token, tokens)
+import Text.ParserCombinators.Parsec hiding (token, tokens, try)
 
 import Control.Applicative hiding (many, (<|>))
 
@@ -20,10 +20,7 @@ data Token = Identifier String
            | StringLit String
            | CharLit Char
            | BoolLit Bool
-           | Type VarType
-           | UnOp String
-           | BinOp String
-           | AsnOp String
+           | Operator String
            | Keyword String
            | RBrace
            | LBrace
@@ -33,7 +30,7 @@ data Token = Identifier String
 type TokenPos = (Token, SourcePos)
 
 parserPos :: Parser Token -> Parser TokenPos
-parserPos p = (,) <$> p <*> getPosition
+parserPos p = flip (,) <$> getPosition <*> p
 
 idParser :: Parser TokenPos
 idParser = do
@@ -47,7 +44,7 @@ idParser = do
     return (Identifier $ firstChar : restChar, pos)
 
 intParser :: Parser TokenPos
-intParser = flip (,) <$> getPosition <*> (NumberLit <$> readNum)
+intParser = parserPos $ NumberLit <$> readNum
     where
         readNum = read <$> (return <$> char '0' <|> many1 digit)
 
@@ -76,19 +73,39 @@ sCharParser :: Parser Char
 sCharParser = nonEscape <|> escape
 
 stringParser :: Parser TokenPos
-stringParser = flip (,) <$> getPosition <*> between (char '"') (char '"') content
+stringParser = parserPos $ between (char '"') (char '"') content
     where
         content = StringLit <$> many sCharParser
 
 charParser :: Parser TokenPos
-charParser = flip (,) <$> getPosition <*> (CharLit <$> between (char '\'') (char '\'') content)
+charParser = parserPos $ CharLit <$> between (char '\'') (char '\'') content
     where
         content = sCharParser <|> char '"' <|> char '\0'
 
+boolParser :: Parser TokenPos
+boolParser = parserPos $ BoolLit <$> (true *> return True <|> false *> return False)
+    where
+        true = try $ string "true"
+        false = try $ string "false"
+
+opParser :: Parser TokenPos
+opParser = parserPos $ Operator <$> (choice $ string <$> ops)
+    where
+        ops = [ "!", "~", "-", "*", "+"
+              , "/", "%", "<<", ">>", "<"
+              , ">", "==", "!=", "&", "^"
+              , "|", "&&", "||", "=", "+="
+              , "-=", "*=", "/=", "%=", "<<="
+              , ">>=", "&=", "^=", "|="
+              ]
+
 tokenParser :: Parser TokenPos
-tokenParser = choice [ idParser
-                     , intParser
+tokenParser = choice [ intParser
                      , stringParser
+                     , charParser
+                     , boolParser
+                     , idParser
+                     , opParser
                      ]
 
 tokens :: Parser [TokenPos]

@@ -12,6 +12,8 @@ build-type:     Simple
 extra-source-files:
     README.md
 
+    c0_sample/*
+
 source-repository head
   type: git
   location: https://github.com/davidmaamoaix/mini-compiler
