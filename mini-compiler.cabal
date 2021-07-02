@@ -35,7 +35,7 @@ executable compiler
 
 test-suite mini-compiler-test
   type: exitcode-stdio-1.0
-  main-is: Spec.hs
+  main-is: Test.hs
   hs-source-dirs:
     test
     src
@@ -43,9 +43,12 @@ test-suite mini-compiler-test
     Lexer
     Parser
     AST
+    LexerTest
+    TestUtils
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
     base >=4.7 && <5,
     parsec >=3.1,
-    containers >=0.6
+    containers >=0.6,
+    HUnit
   default-language: Haskell2010

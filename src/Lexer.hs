@@ -99,6 +99,11 @@ opParser = parserPos $ Operator <$> (choice $ string <$> ops)
               , ">>=", "&=", "^=", "|="
               ]
 
+lBraceParser, rBraceParser, semiParser :: Parser TokenPos
+lBraceParser = parserPos $ char '{' *> return LBrace
+rBraceParser = parserPos $ char '}' *> return RBrace
+semiParser = parserPos $ char '}' *> return Semicolon
+
 tokenParser :: Parser TokenPos
 tokenParser = choice [ intParser
                      , stringParser
@@ -108,8 +113,11 @@ tokenParser = choice [ intParser
                      , opParser
                      ]
 
-tokens :: Parser [TokenPos]
-tokens = spaces *> many (tokenParser <* spaces)
+tokensParser :: Parser [TokenPos]
+tokensParser = spaces *> many (tokenParser <* spaces)
 
-testLexer :: Parser TokenPos -> String -> Either ParseError TokenPos
-testLexer lexer = parse lexer "(stdio)"
+stripPos :: [TokenPos] -> [Token]
+stripPos = map fst
+
+tokenize :: String -> String -> Either ParseError [TokenPos]
+tokenize code source = parse tokensParser source code
