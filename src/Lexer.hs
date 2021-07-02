@@ -1,5 +1,8 @@
 module Lexer where
 
+import qualified Data.Maybe as Maybe
+import qualified Data.Map as Map
+
 import Text.Parsec
 import Text.Parsec.Token
 import Text.ParserCombinators.Parsec hiding (token, tokens)
@@ -21,21 +24,9 @@ data Token = Identifier String
            | UnOp String
            | BinOp String
            | AsnOp String
-           | Struct
-           | TypeDef
-           | If
-           | Else
-           | While
-           | For
-           | Continue
-           | Break
-           | Return
-           | Assert
-           | NULL
-           | Alloc
-           | AllocArray
-           | LBrace
+           | Keyword String
            | RBrace
+           | LBrace
            | Semicolon
            deriving (Eq, Show)
 
@@ -61,7 +52,22 @@ intParser = flip (,) <$> getPosition <*> (NumberLit <$> readNum)
         readNum = read <$> (return <$> char '0' <|> many1 digit)
 
 escape :: Parser Char
-escape = char '\\' *> oneOf "\\\""
+escape = char '\\' *> (replace <$> oneOf "\\\"'?ntvbrfa")
+    where
+        -- fromJust because it can't possibly mess up
+        replace = Maybe.fromJust . find
+        find x = Map.lookup x $ Map.fromList [ ('\\', '\\')
+                                             , ('"', '"')
+                                             , ('\'', '\'')
+                                             , ('?', '?')
+                                             , ('n', '\n')
+                                             , ('t', '\t')
+                                             , ('v', '\v')
+                                             , ('b', '\b')
+                                             , ('r', '\r')
+                                             , ('f', '\f')
+                                             , ('a', '\a')
+                                             ]
 
 nonEscape :: Parser Char
 nonEscape = noneOf "\\\""
