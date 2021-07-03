@@ -22,9 +22,7 @@ data Token = Identifier String
            | BoolLit Bool
            | Operator String
            | Keyword String
-           | RBrace
-           | LBrace
-           | Semicolon
+           | Symbol Char
            deriving (Eq, Show)
 
 type TokenPos = (Token, SourcePos)
@@ -99,18 +97,27 @@ opParser = parserPos $ Operator <$> (choice $ string <$> ops)
               , ">>=", "&=", "^=", "|="
               ]
 
-lBraceParser, rBraceParser, semiParser :: Parser TokenPos
-lBraceParser = parserPos $ char '{' *> return LBrace
-rBraceParser = parserPos $ char '}' *> return RBrace
-semiParser = parserPos $ char '}' *> return Semicolon
+lParamParser, rParamParser, lBraceParser, rBraceParser, commaParser,  semiParser :: Parser TokenPos
+lParamParser = parserPos $ Symbol <$> char '('
+rParamParser = parserPos $ Symbol <$> char ')'
+lBraceParser = parserPos $ Symbol <$> char '{'
+rBraceParser = parserPos $ Symbol <$> char '}'
+commaParser = parserPos $ Symbol <$> char ','
+semiParser = parserPos $ Symbol <$> char ';'
 
 tokenParser :: Parser TokenPos
-tokenParser = choice [ intParser
+tokenParser = choice [ lParamParser
+                     , rParamParser
+                     , lBraceParser
+                     , rBraceParser
+                     , commaParser
+                     , semiParser
+                     , intParser
                      , stringParser
                      , charParser
                      , boolParser
-                     , idParser
                      , opParser
+                     , idParser
                      ]
 
 tokensParser :: Parser [TokenPos]

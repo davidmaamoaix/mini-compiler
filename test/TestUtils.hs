@@ -19,4 +19,6 @@ equalRun sample file msg test = testCase <$> Map.lookup file sample
                 (expected, actual) = test code
 
 makeCodeMap :: [String] -> IO CodeMap
-makeCodeMap s = (Map.fromList . zip s) <$> (sequence $ map readFile s)
+makeCodeMap s = (Map.fromList . zip s) <$> (sequence $ map getFile s)
+    where
+        getFile x = readFile (codeDir ++ x ++ ".c0")

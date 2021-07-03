@@ -13,6 +13,7 @@ lexerTest :: CodeMap -> Test
 lexerTest sample = TestList $ Maybe.catMaybes $ map ($ sample) [lexerBasics]
 
 lexerBasics :: CodeFileTest
-lexerBasics sample = equalRun sample "basics" "Lexes basics.c0" (\s -> (tokens, tokenize s "basics"))
+lexerBasics sample = equalRun sample "basics" "Lexes basics.c0" (\s -> (tokens, result s))
     where
         tokens = Right []
+        result x = stripPos <$> tokenize x "basics"
