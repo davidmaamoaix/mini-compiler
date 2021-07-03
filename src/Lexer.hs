@@ -44,7 +44,7 @@ idParser = do
 intParser :: Parser TokenPos
 intParser = parserPos $ NumberLit <$> readNum
     where
-        readNum = read <$> (return <$> char '0' <|> many1 digit)
+        readNum = read <$> (return <$> char '0' <|> (try $ many1 digit))
 
 escape :: Parser Char
 escape = char '\\' *> (replace <$> oneOf "\\\"'?ntvbrfa")
