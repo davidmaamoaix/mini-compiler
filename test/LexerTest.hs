@@ -14,6 +14,7 @@ import TestUtils
 lexerTest :: CodeMap -> Test
 lexerTest sample = TestList $ Maybe.catMaybes $ map ($ sample) [ lexerBasics
                                                                , lexerStructs
+                                                               , lexerNumberError
                                                                ]
 
 simpleTester :: CodeMap -> String -> Either ParseError [Token] -> Maybe Test
@@ -85,4 +86,15 @@ lexerStructs sample = simpleTester sample "structs" tokens
                        , Identifier "a"
                        , Symbol ';'
                        , Identifier "a"
+                       , Operator "."
+                       , Identifier "name"
+                       , Operator "="
+                       , StringLit "hello"
+                       , Symbol ';'
+                       , Symbol '}'
                        ]
+
+lexerNumberError :: CodeFileTest
+lexerNumberError sample = simpleTester sample "number_error" tokens
+    where
+        tokens = Right []

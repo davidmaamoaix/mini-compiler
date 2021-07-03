@@ -87,31 +87,22 @@ boolParser = parserPos $ BoolLit <$> (true *> return True <|> false *> return Fa
         false = try $ string "false"
 
 opParser :: Parser TokenPos
-opParser = parserPos $ Operator <$> (choice $ string <$> ops)
+opParser = parserPos $ Operator <$> (choice $ (try . string) <$> ops)
     where
         ops = [ "!", "~", "-", "*", "+"
               , "/", "%", "<<", ">>", "<"
               , ">", "==", "!=", "&", "^"
               , "|", "&&", "||", "=", "+="
               , "-=", "*=", "/=", "%=", "<<="
-              , ">>=", "&=", "^=", "|="
+              , ">>=", "&=", "^=", "|=", "."
+              , "->"
               ]
 
-lParamParser, rParamParser, lBraceParser, rBraceParser, commaParser,  semiParser :: Parser TokenPos
-lParamParser = parserPos $ Symbol <$> char '('
-rParamParser = parserPos $ Symbol <$> char ')'
-lBraceParser = parserPos $ Symbol <$> char '{'
-rBraceParser = parserPos $ Symbol <$> char '}'
-commaParser = parserPos $ Symbol <$> char ','
-semiParser = parserPos $ Symbol <$> char ';'
+symbolParser :: Parser TokenPos
+symbolParser = parserPos $ Symbol <$> oneOf "(){}[],;"
 
 tokenParser :: Parser TokenPos
-tokenParser = choice [ lParamParser
-                     , rParamParser
-                     , lBraceParser
-                     , rBraceParser
-                     , commaParser
-                     , semiParser
+tokenParser = choice [ symbolParser
                      , intParser
                      , stringParser
                      , charParser
@@ -121,7 +112,7 @@ tokenParser = choice [ lParamParser
                      ]
 
 tokensParser :: Parser [TokenPos]
-tokensParser = spaces *> many (tokenParser <* spaces)
+tokensParser = spaces *> many (tokenParser <* spaces) <* eof
 
 stripPos :: [TokenPos] -> [Token]
 stripPos = map fst
