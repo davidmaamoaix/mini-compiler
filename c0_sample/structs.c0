@@ -1,0 +1,9 @@
+struct Foo {
+    int *ptr;
+    string name;
+};
+
+int main() {
+    struct Foo a;
+    a.name = "hello";
+}

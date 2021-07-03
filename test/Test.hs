@@ -7,5 +7,5 @@ import LexerTest
 import TestUtils
 
 main = do
-    sample <- makeCodeMap ["basics"]
+    sample <- makeCodeMap ["basics", "structs"]
     runTestTT $ lexerTest $ sample
