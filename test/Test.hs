@@ -7,4 +7,4 @@ import LexerTest
 import TestUtils
 
 main = do
-    return ()
+    putStrLn $ show $ testStr "while"

@@ -47,7 +47,6 @@ idParser :: Parser Token
 idParser = do
     s <- ((:) <$> oneOf first <*> (many $ oneOf rest))
     return $ (if s `elem` reser then Keyword else Identifier) s
-
     where
         first = ['A'..'Z'] ++ ['a'..'z'] ++ "_"
         rest = first ++ ['0'..'9']
@@ -66,19 +65,26 @@ hexParser = char '0' *> oneOf "xX" *> (many $ oneOf hex)
 
 escParser :: Parser Char
 escParser = choice $ (convert) <$> [ "\\n", "\\t", "\\v", "\\b",
-                                     "\\r", "\\f", "\\a", "\\",
-                                     "\\?", "\\'", "\\\""
+                                     "\\r", "\\f", "\\a", "\\"
                                    ]
     where
         convert :: String -> Parser Char
         convert s = readEsc <$> (try $ string s)
         readEsc s = read ("'" ++ s ++ "'")
 
+nCharParser :: Parser Char
+nCharParser = noneOf "\\\"\n"
+
 strParser :: Parser String
-strParser = string "a"
+strParser = char '"' *> many schar <* char '"'
+    where
+        schar = nCharParser <|> escParser
 
 keyParser :: Parser String
 keyParser = choice $ (try . string) <$> keywords
 
 stripPos :: [TokenPos] -> [Token]
 stripPos = map fst
+
+testStr :: String -> Either ParseError String
+testStr = parse strParser ""
