@@ -9,17 +9,15 @@ import Text.ParserCombinators.Parsec hiding (token, tokens, try)
 
 import Control.Applicative hiding (many, (<|>))
 
-data VarType = Int
-             | Bool
-             | String
-             | Char
+data LitType = StrLit String
+             | IntLit Int
+             | BoolLit Bool
+             | CharLit Char
+             | Null
              deriving (Eq, Show)
 
 data Token = Identifier String
-           | NumberLit Int
-           | StringLit String
-           | CharLit Char
-           | BoolLit Bool
+           | Literal LitType
            | Operator String
            | Keyword String
            | Symbol Char
@@ -27,95 +25,53 @@ data Token = Identifier String
 
 type TokenPos = (Token, SourcePos)
 
+keywords = [ "struct", "typedef", "if", "else", "while",
+             "for", "continue", "break", "return", "assert",
+             "alloc", "alloc_array"
+           ]
+
+reserved = keywords ++ [ "true", "false", "NULL", "int",
+                         "bool", "string", "char"
+                       ]
+
+token :: TokenPos -> Token
+token = fst
+
+pos :: TokenPos -> SourcePos
+pos = snd
+
 parserPos :: Parser Token -> Parser TokenPos
 parserPos p = flip (,) <$> getPosition <*> p
 
-idParser :: Parser TokenPos
-idParser = do
-    let first = ['A'..'Z'] ++ ['a'..'z'] ++ "_"
+idParser :: Parser Token
+idParser = Identifier <$> ((:) <$> oneOf first <*> (many $ oneOf rest))
+    where
+        first = ['A'..'Z'] ++ ['a'..'z'] ++ "_"
         rest = first ++ ['0'..'9']
 
-    pos <- getPosition
-    firstChar <- oneOf first
-    restChar <- many $ oneOf rest
-    spaces
-    return (Identifier $ firstChar : restChar, pos)
-
-intParser :: Parser TokenPos
-intParser = parserPos $ NumberLit <$> readNum
+decParser :: Parser Token
+decParser = Literal . IntLit . read <$> num
     where
-        readNum = read <$> (return <$> char '0' <|> (try $ many1 digit))
+        first = oneOf ['1'..'9']
+        rest = oneOf ['0'..'9']
+        num = (string "0" <|> (:) <$> first <*> (many $ rest))
 
-escape :: Parser Char
-escape = char '\\' *> (replace <$> oneOf "\\\"'?ntvbrfa")
+hexParser :: Parser String
+hexParser = char '0' *> oneOf "xX" *> (many $ oneOf hex)
     where
-        -- fromJust because it can't possibly mess up
-        replace = Maybe.fromJust . find
-        find x = Map.lookup x $ Map.fromList [ ('\\', '\\')
-                                             , ('"', '"')
-                                             , ('\'', '\'')
-                                             , ('?', '?')
-                                             , ('n', '\n')
-                                             , ('t', '\t')
-                                             , ('v', '\v')
-                                             , ('b', '\b')
-                                             , ('r', '\r')
-                                             , ('f', '\f')
-                                             , ('a', '\a')
-                                             ]
+        hex = ['0'..'9'] ++ ['a'..'f'] ++ ['A'..'F']
 
-nonEscape :: Parser Char
-nonEscape = noneOf "\\\""
+escParser :: Parser Char
+escParser = choice $ (try . string) <$> [ "\\n", "\\t", "\\v", "\\b",
+                                          "\\r", "\\f", "\\a", "\\",
+                                          "\\?", "\\'", "\\\""
+                                        ]
 
-sCharParser :: Parser Char
-sCharParser = nonEscape <|> escape
+strParser :: Parser String
+strParser = string "a"
 
-stringParser :: Parser TokenPos
-stringParser = parserPos $ between (char '"') (char '"') content
-    where
-        content = StringLit <$> many sCharParser
-
-charParser :: Parser TokenPos
-charParser = parserPos $ CharLit <$> between (char '\'') (char '\'') content
-    where
-        content = sCharParser <|> char '"' <|> char '\0'
-
-boolParser :: Parser TokenPos
-boolParser = parserPos $ BoolLit <$> (true *> return True <|> false *> return False)
-    where
-        true = try $ string "true"
-        false = try $ string "false"
-
-opParser :: Parser TokenPos
-opParser = parserPos $ Operator <$> (choice $ (try . string) <$> ops)
-    where
-        ops = [ "!", "~", "-", "*", "+"
-              , "/", "%", "<<", ">>", "<"
-              , ">", "==", "!=", "&", "^"
-              , "|", "&&", "||", "=", "+="
-              , "-=", "*=", "/=", "%=", "<<="
-              , ">>=", "&=", "^=", "|=", "."
-              , "->"
-              ]
-
-symbolParser :: Parser TokenPos
-symbolParser = parserPos $ Symbol <$> oneOf "(){}[],;"
-
-tokenParser :: Parser TokenPos
-tokenParser = choice [ symbolParser
-                     , intParser
-                     , stringParser
-                     , charParser
-                     , boolParser
-                     , opParser
-                     , idParser
-                     ]
-
-tokensParser :: Parser [TokenPos]
-tokensParser = spaces *> many (tokenParser <* spaces) <* eof
+keyParser :: Parser String
+keyParser = choice $ (try . string) <$> keywords
 
 stripPos :: [TokenPos] -> [Token]
 stripPos = map fst
-
-tokenize :: String -> String -> Either ParseError [TokenPos]
-tokenize code source = parse tokensParser source code
