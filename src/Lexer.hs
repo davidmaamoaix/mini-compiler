@@ -30,9 +30,9 @@ keywords = [ "struct", "typedef", "if", "else", "while",
              "alloc", "alloc_array"
            ]
 
-reserved = keywords ++ [ "true", "false", "NULL", "int",
-                         "bool", "string", "char"
-                       ]
+reser = keywords ++ [ "true", "false", "NULL", "int",
+                      "bool", "string", "char"
+                    ]
 
 token :: TokenPos -> Token
 token = fst
@@ -44,7 +44,10 @@ parserPos :: Parser Token -> Parser TokenPos
 parserPos p = flip (,) <$> getPosition <*> p
 
 idParser :: Parser Token
-idParser = Identifier <$> ((:) <$> oneOf first <*> (many $ oneOf rest))
+idParser = do
+    s <- ((:) <$> oneOf first <*> (many $ oneOf rest))
+    return $ (if s `elem` reser then Keyword else Identifier) s
+
     where
         first = ['A'..'Z'] ++ ['a'..'z'] ++ "_"
         rest = first ++ ['0'..'9']
@@ -62,10 +65,14 @@ hexParser = char '0' *> oneOf "xX" *> (many $ oneOf hex)
         hex = ['0'..'9'] ++ ['a'..'f'] ++ ['A'..'F']
 
 escParser :: Parser Char
-escParser = choice $ (try . string) <$> [ "\\n", "\\t", "\\v", "\\b",
-                                          "\\r", "\\f", "\\a", "\\",
-                                          "\\?", "\\'", "\\\""
-                                        ]
+escParser = choice $ (convert) <$> [ "\\n", "\\t", "\\v", "\\b",
+                                     "\\r", "\\f", "\\a", "\\",
+                                     "\\?", "\\'", "\\\""
+                                   ]
+    where
+        convert :: String -> Parser Char
+        convert s = readEsc <$> (try $ string s)
+        readEsc s = read ("'" ++ s ++ "'")
 
 strParser :: Parser String
 strParser = string "a"
