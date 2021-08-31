@@ -2,6 +2,7 @@ module Lexer where
 
 import qualified Data.Maybe as Maybe
 import qualified Data.Map as Map
+import Data.Char (toUpper)
 
 import Text.Parsec
 import Text.Parsec.Token
@@ -52,16 +53,37 @@ idParser = do
         rest = first ++ ['0'..'9']
 
 decParser :: Parser Token
-decParser = Literal . IntLit . read <$> num
+decParser = (Literal . IntLit . read) <$> num
     where
         first = oneOf ['1'..'9']
         rest = oneOf ['0'..'9']
         num = (string "0" <|> (:) <$> first <*> (many $ rest))
 
-hexParser :: Parser String
-hexParser = char '0' *> oneOf "xX" *> (many $ oneOf hex)
+hexParser :: Parser Token
+hexParser = (Literal . IntLit) <$> value
     where
+        value = (char '0' *> oneOf "xX" *> (getHex <$> (many $ oneOf hex)))
         hex = ['0'..'9'] ++ ['a'..'f'] ++ ['A'..'F']
+        getHex s = run $ reverse s
+        run [] = 0
+        run (x:xs) = hexChar (toUpper x) + 16 * run xs
+        hexChar '0' = 0
+        hexChar '1' = 1
+        hexChar '2' = 2
+        hexChar '3' = 3
+        hexChar '4' = 4
+        hexChar '5' = 5
+        hexChar '6' = 6
+        hexChar '7' = 7
+        hexChar '8' = 8
+        hexChar '9' = 9
+        hexChar 'A' = 10
+        hexChar 'B' = 11
+        hexChar 'C' = 12
+        hexChar 'D' = 13
+        hexChar 'E' = 14
+        hexChar 'F' = 15
+        hexChar _ = error "invalid char"
 
 escParser :: Parser Char
 escParser = choice $ (convert) <$> [ "\\n", "\\t", "\\v", "\\b",
@@ -75,16 +97,27 @@ escParser = choice $ (convert) <$> [ "\\n", "\\t", "\\v", "\\b",
 nCharParser :: Parser Char
 nCharParser = noneOf "\\\"\n"
 
-strParser :: Parser String
-strParser = char '"' *> many schar <* char '"'
+strParser :: Parser Token
+strParser = (Literal . StrLit) <$> (char '"' *> many schar <* char '"')
     where
         schar = nCharParser <|> escParser
 
-keyParser :: Parser String
-keyParser = choice $ (try . string) <$> keywords
+charParser :: Parser Token
+charParser = (Literal . CharLit) <$> (char '\'' *> (cchar) <* char '\'')
+    where
+        cchar = nCharParser <|> escParser <|> char '"' <|> char '\0'
+
+keyParser :: Parser Token
+keyParser = Keyword <$> (choice $ (try . string) <$> keywords)
 
 stripPos :: [TokenPos] -> [Token]
 stripPos = map fst
 
-testStr :: String -> Either ParseError String
-testStr = parse strParser ""
+tokenParser :: Parser TokenPos
+tokenParser = choice $ (try . parserPos) <$> [ keyParser,
+                                               charParser,
+                                               strParser
+                                             ]
+
+tokenize :: String -> Either ParseError [TokenPos]
+tokenize = parse (many tokenParser) ""
