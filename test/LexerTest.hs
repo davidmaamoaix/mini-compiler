@@ -8,7 +8,7 @@ import qualified Data.Maybe as Maybe
 import Text.Parsec
 
 import Lexer
-import TestUtils
+import TestData
 
-testLexer :: TestPhrase [TokenPos]
+testLexer :: Test
 testLexer = undefined

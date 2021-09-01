@@ -4,7 +4,7 @@ import Lexer
 import Parser
 
 import LexerTest
-import TestUtils
+import TestData
 
 main = do
-    testLexer
+    runTestTT testLexer

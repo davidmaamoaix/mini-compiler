@@ -1,1 +1,3 @@
-int a = 00;
+int main() {
+    int a = 00;
+}
