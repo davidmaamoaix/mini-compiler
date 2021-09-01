@@ -24,7 +24,7 @@ makeCodeMap s = do
     code <- sequence [readFile $ codeDir ++ i | i <- s]
     return $ zip s code
 
-tokenRef :: StateRef (Either ParseError [TokenPos])
+tokenRef :: StateRef (Either ParseError [Token])
 tokenRef = Right <$> Map.fromList entries
     where
         entries = [ ("basics.c0", basics)

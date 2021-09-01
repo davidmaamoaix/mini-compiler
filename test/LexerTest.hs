@@ -17,7 +17,8 @@ testLexer = do
     where
         makeAssert (a, b) = assertEqual "Token list mismatch" a b
         codeMap = makeCodeMap codeFiles
-        codeList :: IO [(Either ParseError [TokenPos], Either ParseError [TokenPos])]
+        codeList :: IO [(Either ParseError [Token], Either ParseError [Token])]
         codeList = do
             code <- codeMap
-            return [(tokenize c, Map.findWithDefault (Right []) f tokenRef) | (f, c) <- code]
+            let ref f = Map.findWithDefault (Right []) f tokenRef
+            return [(stripPos <$> tokenize c, ref f) | (f, c) <- code]
