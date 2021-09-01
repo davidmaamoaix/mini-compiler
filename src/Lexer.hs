@@ -5,7 +5,6 @@ import qualified Data.Map as Map
 import Data.Char (toUpper)
 
 import Text.Parsec
-import Text.Parsec.Token
 import Text.ParserCombinators.Parsec hiding (token, tokens, try)
 
 import Control.Applicative hiding (many, (<|>))
@@ -140,4 +139,4 @@ tokenParser = choice $ (try . parserPos) <$> [ keyParser
                                              ]
 
 tokenize :: String -> Either ParseError [TokenPos]
-tokenize = parse (many tokenParser) ""
+tokenize = parse (spaces *> (many $ tokenParser <* spaces)) ""

@@ -7,4 +7,5 @@ import LexerTest
 import TestData
 
 main = do
-    runTestTT testLexer
+    test <- testLexer
+    runTestTT test
