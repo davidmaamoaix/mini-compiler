@@ -7,4 +7,4 @@ import LexerTest
 import TestUtils
 
 main = do
-    putStrLn $ show $ tokenize "while"
+    testLexer

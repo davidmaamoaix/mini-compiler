@@ -113,10 +113,30 @@ keyParser = Keyword <$> (choice $ (try . string) <$> keywords)
 stripPos :: [TokenPos] -> [Token]
 stripPos = map fst
 
+opParser :: Parser Token
+opParser = Operator <$> (choice $ (try . string) <$> ops)
+    where
+        ops = [ "!", "~", "-", "*", "+"
+              , "/", "%", "<<", ">>", "<"
+              , ">", "==", "!=", "&", "^"
+              , "|", "&&", "||", "=", "+="
+              , "-=", "*=", "/=", "%=", "<<="
+              , ">>=", "&=", "^=", "|=", "++"
+              , "--", "<=", ">="
+              ]
+
+symbolParser :: Parser Token
+symbolParser = Symbol <$> (oneOf "(){}[],;")
+
 tokenParser :: Parser TokenPos
-tokenParser = choice $ (try . parserPos) <$> [ keyParser,
-                                               charParser,
-                                               strParser
+tokenParser = choice $ (try . parserPos) <$> [ keyParser
+                                             , charParser
+                                             , strParser
+                                             , hexParser
+                                             , decParser
+                                             , symbolParser
+                                             , idParser
+                                             , opParser
                                              ]
 
 tokenize :: String -> Either ParseError [TokenPos]
