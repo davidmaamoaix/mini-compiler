@@ -30,9 +30,9 @@ keywords = [ "struct", "typedef", "if", "else", "while",
              "alloc", "alloc_array"
            ]
 
-reser = keywords ++ [ "true", "false", "NULL", "int",
-                      "bool", "string", "char"
-                    ]
+litWords = ["true", "false", "NULL"]
+
+reservedWords = ["int", "bool", "string", "char"] ++ litWords ++ keywords
 
 token :: TokenPos -> Token
 token = fst
@@ -46,8 +46,14 @@ parserPos p = flip (,) <$> getPosition <*> p
 idParser :: Parser Token
 idParser = do
     s <- ((:) <$> oneOf first <*> (many $ oneOf rest))
-    return $ (if s `elem` reser then Keyword else Identifier) s
+    return $ getTok s
     where
+        getTok s
+            | s == "true" = Literal $ BoolLit True
+            | s == "false" = Literal $ BoolLit False
+            | s == "NULL" = Literal Null
+            | s `elem` keywords = Keyword s
+            | otherwise = Identifier s
         first = ['A'..'Z'] ++ ['a'..'z'] ++ "_"
         rest = first ++ ['0'..'9']
 

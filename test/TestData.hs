@@ -32,7 +32,104 @@ tokenRef = Right <$> Map.fromList entries
                   , ("number_error.c0", numberError)
                   , ("pointer.c0", pointer)
                   ]
-        basics = []
-        structs = []
-        numberError = []
-        pointer = []
+
+        basics =        [ Identifier "int"
+                        , Identifier "add"
+                        , Symbol '('
+                        , Identifier "int"
+                        , Identifier "a"
+                        , Symbol ','
+                        , Identifier "int"
+                        , Identifier "b"
+                        , Symbol ')'
+                        , Symbol '{'
+                        , Keyword "return"
+                        , Identifier "a"
+                        , Operator "+"
+                        , Identifier "b"
+                        , Symbol ';'
+                        , Symbol '}'
+                        , Identifier "bool"
+                        , Identifier "and_gate"
+                        , Symbol '('
+                        , Identifier "bool"
+                        , Identifier "a"
+                        , Symbol ','
+                        , Identifier "bool"
+                        , Identifier "b"
+                        , Symbol ')'
+                        , Symbol '{'
+                        , Keyword "return"
+                        , Identifier "a"
+                        , Operator "&"
+                        , Operator "&"
+                        , Identifier "b"
+                        , Symbol ';'
+                        , Symbol '}'
+                        ]
+
+        structs =       [ Keyword "struct"
+                        , Identifier "Foo"
+                        , Symbol '{'
+                        , Identifier "int"
+                        , Operator "*"
+                        , Identifier "ptr"
+                        , Symbol ';'
+                        , Identifier "string"
+                        , Identifier "name"
+                        , Symbol ';'
+                        , Symbol '}'
+                        , Symbol ';'
+                        , Identifier "int"
+                        , Identifier "main"
+                        , Symbol '('
+                        , Symbol ')'
+                        , Symbol '{'
+                        , Keyword "struct"
+                        , Identifier "Foo"
+                        , Identifier "a"
+                        , Symbol ';'
+                        , Identifier "a"
+                        ]
+
+        numberError =   [ Identifier "int"
+                        , Identifier "main"
+                        , Symbol '('
+                        , Symbol ')'
+                        , Symbol '{'
+                        , Identifier "int"
+                        , Identifier "a"
+                        , Operator "="
+                        , Literal (IntLit 0)
+                        , Literal (IntLit 0)
+                        , Symbol ';'
+                        , Symbol '}'
+                        ]
+
+        pointer =       [ Identifier "int"
+                        , Identifier "main"
+                        , Symbol '('
+                        , Symbol ')'
+                        , Symbol '{'
+                        , Identifier "int"
+                        , Operator "*"
+                        , Identifier "b"
+                        , Operator "="
+                        , Keyword "alloc"
+                        , Symbol '('
+                        , Identifier "int"
+                        , Symbol ')'
+                        , Symbol ';'
+                        , Operator "*"
+                        , Identifier "b"
+                        , Operator "="
+                        , Literal (IntLit 20)
+                        , Symbol ';'
+                        , Identifier "int"
+                        , Identifier "a"
+                        , Operator "="
+                        , Operator "*"
+                        , Identifier "b"
+                        , Symbol ';'
+                        , Symbol '}'
+                        ]
