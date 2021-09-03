@@ -100,8 +100,8 @@ tokenRef = Right <$> Map.fromList entries
                         , Identifier "int"
                         , Identifier "a"
                         , Operator "="
-                        , Literal (IntLit 0)
-                        , Literal (IntLit 0)
+                        , Literal (IntVal 0)
+                        , Literal (IntVal 0)
                         , Symbol ';'
                         , Symbol '}'
                         ]
@@ -123,7 +123,7 @@ tokenRef = Right <$> Map.fromList entries
                         , Operator "*"
                         , Identifier "b"
                         , Operator "="
-                        , Literal (IntLit 20)
+                        , Literal (IntVal 20)
                         , Symbol ';'
                         , Identifier "int"
                         , Identifier "a"
