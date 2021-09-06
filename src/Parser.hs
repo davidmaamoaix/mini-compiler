@@ -24,6 +24,6 @@ data Syntax a where
     FuncCall :: String -> [Syntax Exp] -> Syntax Exp
     DeclStruct :: String -> Syntax GlobDecl
     DefStruct :: String -> [VarDecl] -> Syntax GlobDecl
-    DeclVar :: [VarDecl] -> Syntax VarDecl
-    GlobVar :: Syntax VarDecl -> Syntax GlobDecl
+    GlobVar :: [VarDecl] -> Syntax GlobDecl
     TypeDef :: String -> String -> Syntax GlobDecl
+    DeclVar :: VarDecl -> Syntax Exp -> Syntax VarDecl
