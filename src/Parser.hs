@@ -53,3 +53,5 @@ data Syntax a where
     DecStmt :: String -> Syntax Stmt
     ExpStmt :: Syntax Exp -> Syntax Stmt
     AsnStmt :: Syntax LValue -> String -> Exp -> Syntax Stmt
+    DeclStmt :: VarDecl -> Syntax Stmt
+    DefStmt :: VarDecl -> Syntax Exp -> Syntax Stmt
