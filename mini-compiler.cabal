@@ -43,8 +43,6 @@ test-suite mini-compiler-test
     Lexer
     Parser
     AST
-    LexerTest
-    TestData
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
     base >=4.7 && <5,
