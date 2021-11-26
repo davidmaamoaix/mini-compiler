@@ -1,10 +1,35 @@
 module Lexer where
 
-import qualified Data.Maybe as Maybe
-import qualified Data.Map as Map
-import Data.Char (toUpper)
-
 import Text.Parsec
-import Text.ParserCombinators.Parsec hiding (token, tokens, try)
+import qualified Text.Parsec.Token as Tok
 
-import Control.Applicative hiding (many, (<|>))
+resNames :: [String]
+resNames = [ "struct", "typedef", "if", "else"
+                , "while", "for", "continue", "break"
+                , "return", "assert", "true", "false"
+                , "NULL", "alloc", "alloc_array", "int"
+                , "bool", "void", "char", "string"
+                ]
+
+resOps :: [String]
+resOps = [ "!", "~", "-", "+", "*", "/", "%", "<<", ">>"
+              , "<", ">", ">=", "<=", "==", "!=", "&", "^"
+              , "|", "&&", "||", "=", "+=", "-=", "*=", "/="
+              , "%=", "<<=", ">>=", "&=", "|=", "^=", "->"
+              , ".", "--", "++", "(", ")", "[", "]", ",", ";"
+              , "?", ":"
+              ]
+
+lexDef :: Tok.LanguageDef ()
+lexDef = Tok.LanguageDef { Tok.commentStart = "/*"
+                         , Tok.commentEnd = "*/"
+                         , Tok.commentLine = "//"
+                         , Tok.nestedComments = False
+                         , Tok.identStart = letter
+                         , Tok.identLetter = alphaNum <|> char '_'
+                         , Tok.opStart = oneOf "!~-+*/%<>=&|^()[],;?:"
+                         , Tok.opLetter = oneOf "!~-+*/%<>=&|^()[],;?:"
+                         , Tok.reservedNames = resNames
+                         , Tok.reservedOpNames = resOps
+                         , Tok.caseSensitive = True
+                         }
