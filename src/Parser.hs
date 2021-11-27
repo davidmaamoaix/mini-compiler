@@ -61,3 +61,24 @@ data Node a where
     NArrLVal :: Node LVal -> Ident -> Node LVal
     NDeref :: Node LVal -> Node LVal
     NIndexLVal :: Node LVal -> Node Exp -> Node LVal
+    NIf :: Node Exp -> Node Stmt -> Maybe (Node Stmt) -> Node Stmt
+    NWhile :: Node Exp -> Node Stmt -> Node Stmt
+    NFor :: Maybe (Node Simp) -> Node Exp -> Maybe (Node Simp) -> Node Stmt -> Node Stmt
+    NRet :: Node Exp -> Node Stmt
+    NRetNil :: Node Stmt
+    NAssert :: Node Exp -> Node Stmt
+    NIntExp :: Int -> Node Exp
+    NTrueExp :: Node Exp
+    NFalseExp :: Node Exp
+    NIdentExp :: Ident -> Node Exp
+    NNilExp :: Node Exp
+    NUnExp :: UnOp -> Node Exp -> Node Exp
+    NBinExp :: Node Exp -> UnOp -> Node Exp -> Node Exp
+    NIfExp :: Node Exp -> Node Exp -> Node Exp -> Node Exp
+    NCallExp :: Ident -> [Node Exp] -> Node Exp
+    NDotExp :: Node Exp -> Ident -> Node Exp
+    NArrExp :: Node Exp -> Ident -> Node Exp
+    NAllocExp :: Node Type -> Node Exp
+    NDerefExp :: Node Exp -> Node Exp
+    NAllocArrayExp :: Node Type -> Node Exp -> Node Exp
+    NIndexExp :: Node Exp -> Node Exp -> Node Exp
