@@ -18,7 +18,7 @@ data SDecl
 data SDef
 data Field
 data Type
-data Block
+data Block -- not coerced into [Stmt] due to scope check convenience
 data Stmt
 data Simp
 data LVal
@@ -67,6 +67,8 @@ data Node a where
     NRet :: Node Exp -> Node Stmt
     NRetNil :: Node Stmt
     NAssert :: Node Exp -> Node Stmt
+    NBreak :: Node Stmt
+    NCont :: Node Stmt
     NIntExp :: Int -> Node Exp
     NTrueExp :: Node Exp
     NFalseExp :: Node Exp
