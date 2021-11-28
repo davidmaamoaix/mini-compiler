@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Parser where
 
@@ -8,7 +9,8 @@ import Control.Monad
 import Control.Applicative hiding (many, (<|>))
 
 import Text.Parsec
-import Text.ParserCombinators.Parsec
+import Text.ParserCombinators.Parsec hiding (try)
+import qualified Text.Parsec.Token as Tok
 
 data GDecl
 data Prog
@@ -46,6 +48,7 @@ data Node a where
     NBoolType :: Node Type
     NVoidType :: Node Type
     NIdType :: Ident -> Node Type
+    NSIdType :: Ident -> Node Type
     NPtrType :: Node Type -> Node Type
     NArrType :: Node Type -> Node Type
     NBlock :: [Node Stmt] -> Node Block
@@ -69,9 +72,8 @@ data Node a where
     NAssert :: Node Exp -> Node Stmt
     NBreak :: Node Stmt
     NCont :: Node Stmt
-    NIntExp :: Int -> Node Exp
-    NTrueExp :: Node Exp
-    NFalseExp :: Node Exp
+    NIntExp :: Integer -> Node Exp
+    NBoolExp :: Bool -> Node Exp
     NIdentExp :: Ident -> Node Exp
     NNilExp :: Node Exp
     NUnExp :: UnOp -> Node Exp -> Node Exp
@@ -84,3 +86,45 @@ data Node a where
     NDerefExp :: Node Exp -> Node Exp
     NAllocArrayExp :: Node Type -> Node Exp -> Node Exp
     NIndexExp :: Node Exp -> Node Exp -> Node Exp
+
+deriving instance Eq (Node a)
+deriving instance Show (Node a)
+
+programP :: Parser (Node Prog)
+programP = NProg <$> many gDeclP
+
+gDeclP :: Parser (Node GDecl)
+gDeclP = choice declParses
+    where
+        fieldList = between (char '{') (char '}') (many fieldP)
+        declParses = [ try $ reserved "struct" *> (NSDecl <$> ident)
+                     , try $ NSDef <$> (reserved "struct" *> ident) <*> fieldList
+                     ]
+
+fieldP :: Parser (Node Field)
+fieldP = NField <$> typeP <*> ident
+
+typeP :: Parser (Node Type)
+typeP = choice typeParses
+    where
+        typeParses = [ reserved "struct" *> (NSIdType <$> ident)
+                     , NIdType <$> ident
+                     , reserved "int" *> pure NIntType
+                     , reserved "bool" *> pure NBoolType
+                     , reserved "void" *> pure NVoidType
+                     , (NPtrType <$> typeP) <* reservedOp "*"
+                     , (NArrType <$> typeP) <* reservedOp "[" <* reservedOp "]"
+                     ]
+
+litExpP :: Parser (Node Exp)
+litExpP = choice litParses
+    where
+        litParses = [ NIntExp <$> Tok.natural lexer 
+                    , reserved "NULL" *> pure NNilExp
+                    , reserved "true" *> pure (NBoolExp True)
+                    , reserved "false" *> pure (NBoolExp False)
+                    ]
+
+parseProg :: String -> Either ParseError (Node Prog)
+parseProg = parse programP ""
+

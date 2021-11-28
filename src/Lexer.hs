@@ -36,6 +36,7 @@ lexDef = Tok.LanguageDef { Tok.commentStart = "/*"
 lexer :: Tok.TokenParser ()
 lexer = Tok.makeTokenParser lexDef
 
+ident = Tok.identifier lexer
 parens = Tok.parens lexer
 reserved = Tok.reserved lexer
 semiSep = Tok.semiSep lexer
