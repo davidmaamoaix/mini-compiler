@@ -39,5 +39,5 @@ lexer = Tok.makeTokenParser lexDef
 ident = Tok.identifier lexer
 parens = Tok.parens lexer
 reserved = Tok.reserved lexer
-semiSep = Tok.semiSep lexer
 reservedOp = Tok.reservedOp lexer
+semi = reservedOp ";"

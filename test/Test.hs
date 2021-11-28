@@ -1,10 +1,8 @@
 import Test.HUnit
+import System.IO
 
 import Lexer
 import Parser
 
-import LexerTest
-import TestData
-
 main = do
-    return ()
+    putStrLn $ show $ parseProg "struct Acc {foo a; bar b;};"

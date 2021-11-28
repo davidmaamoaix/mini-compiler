@@ -91,30 +91,36 @@ deriving instance Eq (Node a)
 deriving instance Show (Node a)
 
 programP :: Parser (Node Prog)
-programP = NProg <$> many gDeclP
+programP = NProg <$> many gDeclP <* eof
 
 gDeclP :: Parser (Node GDecl)
 gDeclP = choice declParses
     where
-        fieldList = between (char '{') (char '}') (many fieldP)
-        declParses = [ try $ reserved "struct" *> (NSDecl <$> ident)
-                     , try $ NSDef <$> (reserved "struct" *> ident) <*> fieldList
+        fields = between (char '{') (char '}') (many fieldP)
+        declParses = [ try $ reserved "struct" *> (NSDecl <$> ident) <* semi
+                     , try $ NSDef <$> (reserved "struct" *> ident) <*> fields <* semi
                      ]
 
 fieldP :: Parser (Node Field)
-fieldP = NField <$> typeP <*> ident
+fieldP = NField <$> typeP <*> ident <* semi
 
 typeP :: Parser (Node Type)
 typeP = choice typeParses
     where
-        typeParses = [ reserved "struct" *> (NSIdType <$> ident)
-                     , NIdType <$> ident
-                     , reserved "int" *> pure NIntType
-                     , reserved "bool" *> pure NBoolType
-                     , reserved "void" *> pure NVoidType
-                     , (NPtrType <$> typeP) <* reservedOp "*"
-                     , (NArrType <$> typeP) <* reservedOp "[" <* reservedOp "]"
-                     ]
+        atomTypes = [ reserved "struct" *> (NSIdType <$> ident)
+                    , reserved "int" *> pure NIntType
+                    , reserved "bool" *> pure NBoolType
+                    , reserved "void" *> pure NVoidType
+                    , NIdType <$> ident
+                    ]
+        compTypes = [ postType NPtrType (reservedOp "*")
+                   , postType NArrType (reservedOp "[" <* reservedOp "]")
+                   ]
+        postType wrap sufParser = do
+            atom <- choice atomTypes
+            ptrs <- many $ sufParser
+            return $ foldr (const wrap) atom ptrs
+        typeParses = atomTypes ++ compTypes
 
 litExpP :: Parser (Node Exp)
 litExpP = choice litParses
@@ -127,4 +133,3 @@ litExpP = choice litParses
 
 parseProg :: String -> Either ParseError (Node Prog)
 parseProg = parse programP ""
-
