@@ -1,23 +1,24 @@
 module Lexer where
 
 import Text.Parsec
+import Text.ParserCombinators.Parsec hiding (try)
 import qualified Text.Parsec.Token as Tok
 
 resNames :: [String]
 resNames = [ "struct", "typedef", "if", "else"
-                , "while", "for", "continue", "break"
-                , "return", "assert", "true", "false"
-                , "NULL", "alloc", "alloc_array", "int"
-                , "bool", "void", "char", "string"
-                ]
+           , "while", "for", "continue", "break"
+           , "return", "assert", "true", "false"
+           , "NULL", "alloc", "alloc_array", "int"
+           , "bool", "void", "char", "string"
+           ]
 
 resOps :: [String]
 resOps = [ "!", "~", "-", "+", "*", "/", "%", "<<", ">>"
-              , "<", ">", ">=", "<=", "==", "!=", "&", "^"
-              , "|", "&&", "||", "=", "+=", "-=", "*=", "/="
-              , "%=", "<<=", ">>=", "&=", "|=", "^=", "->"
-              , ".", "--", "++", "[", "]", ";", "?", ":"
-              ]
+         , "<", ">", ">=", "<=", "==", "!=", "&", "^"
+         , "|", "&&", "||", "=", "+=", "-=", "*=", "/="
+         , "%=", "<<=", ">>=", "&=", "|=", "^=", "->"
+         , ".", "--", "++", "[", "]", ";", "?", ":"
+         ]
 
 lexDef :: Tok.LanguageDef ()
 lexDef = Tok.LanguageDef { Tok.commentStart = "/*"
@@ -39,5 +40,8 @@ lexer = Tok.makeTokenParser lexDef
 ident = Tok.identifier lexer
 parens = Tok.parens lexer
 reserved = Tok.reserved lexer
-reservedOp = Tok.reservedOp lexer
-semi = reservedOp ";"
+white = Tok.whiteSpace lexer
+semi = op ";"
+
+op :: String -> Parser String
+op a = try (string a <* white <?> "operator " ++ a)

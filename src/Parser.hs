@@ -4,6 +4,7 @@
 module Parser where
 
 import Lexer
+import Debug.Trace
 
 import Control.Monad
 import Control.Applicative hiding (many, (<|>))
@@ -105,7 +106,12 @@ fieldP :: Parser (Node Field)
 fieldP = NField <$> typeP <*> ident <* semi
 
 typeP :: Parser (Node Type)
-typeP = choice typeParses
+typeP = do
+    atom <- choice atomTypes
+    ptrs <- many $ choice [ op "*" *> pure NPtrType
+                          , op "[" *> op "]" *> pure NArrType
+                          ]
+    return $ foldl (flip ($)) atom ptrs
     where
         atomTypes = [ reserved "struct" *> (NSIdType <$> ident)
                     , reserved "int" *> pure NIntType
@@ -113,14 +119,6 @@ typeP = choice typeParses
                     , reserved "void" *> pure NVoidType
                     , NIdType <$> ident
                     ]
-        compTypes = [ postType NPtrType (reservedOp "*")
-                   , postType NArrType (reservedOp "[" <* reservedOp "]")
-                   ]
-        postType wrap sufParser = do
-            atom <- choice atomTypes
-            ptrs <- many $ sufParser
-            return $ foldr (const wrap) atom ptrs
-        typeParses = atomTypes ++ compTypes
 
 litExpP :: Parser (Node Exp)
 litExpP = choice litParses
