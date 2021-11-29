@@ -1,6 +1,6 @@
 struct Foo {
     int *ptr;
-    string name;
+    bool cap;
 };
 
 int main() {

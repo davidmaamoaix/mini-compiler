@@ -75,10 +75,10 @@ data Node a where
     NCont :: Node Stmt
     NIntExp :: Integer -> Node Exp
     NBoolExp :: Bool -> Node Exp
-    NIdentExp :: Ident -> Node Exp
+    NIdExp :: Ident -> Node Exp
     NNilExp :: Node Exp
     NUnExp :: UnOp -> Node Exp -> Node Exp
-    NBinExp :: Node Exp -> UnOp -> Node Exp -> Node Exp
+    NBinExp :: Node Exp -> BinOp -> Node Exp -> Node Exp
     NIfExp :: Node Exp -> Node Exp -> Node Exp -> Node Exp
     NCallExp :: Ident -> [Node Exp] -> Node Exp
     NDotExp :: Node Exp -> Ident -> Node Exp
