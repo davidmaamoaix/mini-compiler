@@ -27,8 +27,8 @@ lexDef = Tok.LanguageDef { Tok.commentStart = "/*"
                          , Tok.nestedComments = False
                          , Tok.identStart = letter
                          , Tok.identLetter = alphaNum <|> char '_'
-                         , Tok.opStart = oneOf "!~-+*/%<>=&|[];?:^"
-                         , Tok.opLetter = oneOf "!~-+*/%<>=&|[];?:^"
+                         , Tok.opStart = oneOf "!~-+*/%<>=&|[]{}();?:^"
+                         , Tok.opLetter = oneOf "-+<>=&|"
                          , Tok.reservedNames = resNames
                          , Tok.reservedOpNames = resOps
                          , Tok.caseSensitive = True
@@ -39,7 +39,8 @@ lexer = Tok.makeTokenParser lexDef
 
 ident = Tok.identifier lexer
 parens = Tok.parens lexer
-reserved = Tok.reserved lexer
+res = Tok.reserved lexer
+resOp = Tok.reservedOp lexer
 white = Tok.whiteSpace lexer
 semi = op ";"
 
