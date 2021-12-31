@@ -5,4 +5,4 @@ import Lexer
 import Parser
 
 main = do
-    putStrLn "123"
+    print $ parseProgram "int main () { int abc = 1;}"

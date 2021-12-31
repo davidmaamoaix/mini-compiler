@@ -78,12 +78,15 @@ pProg = prefix *> braces (NProg <$> many pStmt)
               *> reservedOp "(" *> reservedOp ")"
 
 pStmt :: Parser (Node Stmt)
-pStmt = try (NDeclStmt <$> pDecl)
-    <|> try (NSimpStmt <$> pSimp)
-    <|> reserved "return" *> (NRetStmt <$> pExp)
+pStmt = try (NDeclStmt <$> pDecl <* semi)
+    <|> try (NSimpStmt <$> pSimp <* semi)
+    <|> reserved "return" *> (NRetStmt <$> pExp) <* semi
 
 pDecl :: Parser (Node Decl)
-pDecl = NDecl <$> ident
+pDecl = try (NDeclAsn <$> (head <* reservedOp "=") <*> pExp)
+    <|> NDecl <$> head
+    where
+        head = reserved "int" *> ident
 
 pSimp :: Parser (Node Simp)
 pSimp = NSimp <$> pLVal <*> pAsnOp <*> pExp
@@ -91,9 +94,27 @@ pSimp = NSimp <$> pLVal <*> pAsnOp <*> pExp
 expr :: Parser (Node Exp)
 expr = Ex.buildExpressionParser exprTable pExp
 
+pExp :: Parser (Node Exp)
 pExp = try (NIntExp <$> decimal)
    <|> try (NIdExp <$> ident)
-   <|> parens expr
+   <|> try (parens pExp)
+   <|> expr
 
-pLVal = undefined
-pAsnOp = undefined
+pLVal :: Parser (Node LVal)
+pLVal = try (NIdL <$> ident) 
+    <|> parens pLVal
+
+pAsnOp :: Parser AsnOp
+pAsnOp = choice $ convert <$>
+    [ ("=", Asn)
+    , ("+=", AddAsn)
+    , ("-=", SubAsn)
+    , ("*=", MulAsn)
+    , ("/=", DivAsn)
+    , ("%=", ModAsn)
+    ]
+    where
+        convert (sym, kind) = try $ reservedOp sym $> kind
+
+parseProgram :: String -> Either ParseError (Node Prog)
+parseProgram = parse pProg ""
