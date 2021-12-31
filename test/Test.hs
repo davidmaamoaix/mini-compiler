@@ -5,4 +5,4 @@ import Lexer
 import Parser
 
 main = do
-    return ()
+    putStrLn "123"

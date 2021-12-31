@@ -6,4 +6,3 @@ import Parser
 
 --testParser :: IO Test
 --testParser = do
-    

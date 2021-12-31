@@ -36,7 +36,7 @@ data Node a where
     NRetStmt :: Node Exp -> Node Stmt
     NDecl :: Ident -> Node Decl
     NDeclAsn :: Ident -> Node Exp -> Node Decl
-    NSimp :: Node LVal -> AsnOp -> Node Exp -> Node Stmt
+    NSimp :: Node LVal -> AsnOp -> Node Exp -> Node Simp
     NIdL :: Ident -> Node LVal
     NIntExp :: Integer -> Node Exp
     NIdExp :: Ident -> Node Exp
@@ -47,11 +47,22 @@ deriving instance Eq (Node a)
 deriving instance Show (Node a)
 
 pProg :: Parser (Node Prog)
-pProg = prefix *> op "{" *> (NProg <$> many pStmt) <* op "}"
+pProg = prefix *> braces (NProg <$> many pStmt)
     where
-        prefix = res "int" *> res "main" *> op "(" *> op ")"
+        prefix = reserved "int" *> reserved "main"
+              *> reservedOp "(" *> reservedOp ")"
 
 pStmt :: Parser (Node Stmt)
 pStmt = try (NDeclStmt <$> pDecl)
     <|> try (NSimpStmt <$> pSimp)
-    <|> res "return" *> (NRetStmt <$> pExp)
+    <|> reserved "return" *> (NRetStmt <$> pExp)
+
+pDecl :: Parser (Node Decl)
+pDecl = NDecl <$> ident
+
+pSimp :: Parser (Node Simp)
+pSimp = NSimp <$> pLVal <*> pAsnOp <*> pExp
+
+pExp = undefined
+pLVal = undefined
+pAsnOp = undefined
