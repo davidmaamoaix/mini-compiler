@@ -46,3 +46,4 @@ reserved = Tok.reserved lexer
 reservedOp = Tok.reservedOp lexer
 semi = Tok.lexeme lexer $ string ";"
 braces = Tok.braces lexer
+decimal = Tok.decimal lexer
