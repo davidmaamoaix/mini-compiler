@@ -4,5 +4,9 @@ import System.IO
 import Lexer
 import Parser
 
+import TestData
+import ParserTest
+
 main = do
-    print $ parseProgram "int main () { int abc = 1;}"
+    s <- readProgram "div_by_zero.l1"
+    runTestTT parserTest

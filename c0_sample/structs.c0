@@ -1,9 +1,0 @@
-struct Foo {
-    int *ptr;
-    bool cap;
-};
-
-int main() {
-    struct Foo a;
-    a.name = "hello";
-}

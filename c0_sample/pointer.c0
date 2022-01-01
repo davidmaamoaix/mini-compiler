@@ -1,5 +1,0 @@
-int main() {
-    int *b = alloc(int);
-    *b = 20;
-    int a = *b;
-}

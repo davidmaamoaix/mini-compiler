@@ -74,31 +74,30 @@ exprTable =
 pProg :: Parser (Node Prog)
 pProg = prefix *> braces (NProg <$> many pStmt)
     where
-        prefix = reserved "int" *> reserved "main"
+        prefix = whiteSpace *> reserved "int" *> reserved "main"
               *> reservedOp "(" *> reservedOp ")"
 
 pStmt :: Parser (Node Stmt)
 pStmt = try (NDeclStmt <$> pDecl <* semi)
     <|> try (NSimpStmt <$> pSimp <* semi)
-    <|> reserved "return" *> (NRetStmt <$> pExp) <* semi
+    <|> reserved "return" *> (NRetStmt <$> expr) <* semi
 
 pDecl :: Parser (Node Decl)
-pDecl = try (NDeclAsn <$> (head <* reservedOp "=") <*> pExp)
+pDecl = try (NDeclAsn <$> (head <* reservedOp "=") <*> expr)
     <|> NDecl <$> head
     where
         head = reserved "int" *> ident
 
 pSimp :: Parser (Node Simp)
-pSimp = NSimp <$> pLVal <*> pAsnOp <*> pExp
+pSimp = NSimp <$> pLVal <*> pAsnOp <*> expr
 
 expr :: Parser (Node Exp)
 expr = Ex.buildExpressionParser exprTable pExp
 
 pExp :: Parser (Node Exp)
-pExp = try (NIntExp <$> decimal)
-   <|> try (NIdExp <$> ident)
-   <|> try (parens pExp)
-   <|> expr
+pExp = try (parens expr)
+   <|> try (NIntExp <$> decimal)
+   <|> NIdExp <$> ident
 
 pLVal :: Parser (Node LVal)
 pLVal = try (NIdL <$> ident) 

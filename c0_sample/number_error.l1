@@ -1,3 +1,7 @@
+//test error
+
 int main() {
     int a = 00;
+
+    return 1;
 }

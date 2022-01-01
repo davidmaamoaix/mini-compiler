@@ -12,7 +12,9 @@ build-type:     Simple
 extra-source-files:
     README.md
 
-    c0_sample/basics.c0
+    c0_sample/basics.l1
+    c0_sample/div_by_zero.l1
+    c0_sample/number_error.l1
 
 source-repository head
   type: git
