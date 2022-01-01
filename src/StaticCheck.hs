@@ -2,6 +2,8 @@
 
 module StaticCheck where
 
+import Debug.Trace
+import Control.Monad
 import Control.Monad.State.Lazy
 import qualified Data.Map as M
 
@@ -28,7 +30,15 @@ data Env = Env
     { varCount :: Int
     , varRef :: M.Map String Int
     , code :: [SSA]
-    }
+    } deriving Show
+
+-- Adds a newly declared variable into the reference list
+-- and returns the variable index for it.
+addVar :: String -> State Env Int
+addVar s = do
+    count <- allocReg
+    modify $ \(Env cnt ref ssa) -> Env cnt (M.insert s count ref) ssa
+    return count
 
 allocReg :: State Env Int
 allocReg = do
@@ -46,11 +56,11 @@ toSSA :: Node Prog -> [SSA]
 toSSA (NProg xs) = code $ execState convert (Env 0 M.empty [])
     where
         convert :: State Env ()
-        convert = do
-            forM_ xs stmtToSSA
+        convert = forM_ xs stmtToSSA
 
 stmtToSSA :: Node Stmt -> State Env ()
 stmtToSSA (NBlockStmt xs) = forM_ xs stmtToSSA
-stmtToSSA (NDeclStmt _) = return ()
+stmtToSSA (NDeclStmt (NDecl s)) = void $ addVar s
+stmtToSSA (NDeclStmt (NDeclAsn s exp)) = void $ addVar s
 stmtToSSA (NSimpStmt _) = return ()
 stmtToSSA (NRetStmt _) = return ()
