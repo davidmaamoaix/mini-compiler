@@ -80,6 +80,7 @@ pProg = prefix *> braces (NProg <$> many pStmt)
 pStmt :: Parser (Node Stmt)
 pStmt = try (NDeclStmt <$> pDecl <* semi)
     <|> try (NSimpStmt <$> pSimp <* semi)
+    <|> try (NBlockStmt <$> braces (many pStmt))
     <|> reserved "return" *> (NRetStmt <$> expr) <* semi
 
 pDecl :: Parser (Node Decl)

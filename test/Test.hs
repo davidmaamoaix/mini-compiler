@@ -1,10 +1,13 @@
 import Test.HUnit
 
+import Parser
 import Compiler
+import StaticCheck
+
 import TestData
 import ParserTest
 
 main = do
-    s <- readProgram "number_error.l1"
-    print $ compile s
+    s <- readProgram "basics.l1"
+    print $ toSSA <$> parseProgram s
     runTestTT parserTest

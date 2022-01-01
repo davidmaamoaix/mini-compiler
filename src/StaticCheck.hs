@@ -1,7 +1,4 @@
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FunctionalDependencies #-}
 
 module StaticCheck where
 
@@ -20,10 +17,12 @@ data BinFunc
     | Mul
     | Div
     | Mod
+    deriving (Eq, Show)
 
 data SSA
     = SMove { dest :: Var, src :: Var }
     | SBinFunc { dest :: Var, func :: BinFunc, op1, op2 :: Var }
+    deriving Show
 
 data Env = Env
     { varCount :: Int
@@ -31,10 +30,12 @@ data Env = Env
     , code :: [SSA]
     }
 
--- Typeclass that matches GADT nodes based on whether
--- its SSA form has a return register.
-class ConvertSSA a o | a -> o where
-    conv :: State Env o
+allocReg :: State Env Int
+allocReg = do
+    count <- gets varCount
+    modify $ \(Env _ ref ssa) -> Env (count + 1) ref ssa
+    return count
+
 
 staticCheck :: Node Prog -> Maybe (Int, String)
 staticCheck (NProg xs) = Nothing
@@ -42,4 +43,14 @@ staticCheck (NProg xs) = Nothing
 -- Converts code to Static Single Assignment form.
 -- TODO: change to target a function in future labs.
 toSSA :: Node Prog -> [SSA]
-toSSA x = undefined
+toSSA (NProg xs) = code $ execState convert (Env 0 M.empty [])
+    where
+        convert :: State Env ()
+        convert = do
+            forM_ xs stmtToSSA
+
+stmtToSSA :: Node Stmt -> State Env ()
+stmtToSSA (NBlockStmt xs) = forM_ xs stmtToSSA
+stmtToSSA (NDeclStmt _) = return ()
+stmtToSSA (NSimpStmt _) = return ()
+stmtToSSA (NRetStmt _) = return ()
