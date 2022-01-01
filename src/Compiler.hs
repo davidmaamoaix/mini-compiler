@@ -19,11 +19,13 @@ data CompilerError
 
 compile :: String -> Either CompilerError String
 compile s = do
-    ast <- either (Left . syntaxErr) Right (parseProgram s)
+    ast <- either (Left . convertParseError) Right (parseProgram s)
     case staticCheck ast of
         Nothing -> return ""
         Just (line, msg) -> Left $ StaticCheckError line msg
+
+convertParseError :: ParseError -> CompilerError
+convertParseError pErr = SyntaxError (errPos pErr) (errInfo pErr)
     where
-        syntaxErr pErr = SyntaxError (errPos pErr) (errInfo pErr)
         errPos pErr = let p = errorPos pErr in (sourceLine p, sourceColumn p)
         errInfo pErr = formatParseError (errorMessages pErr)
