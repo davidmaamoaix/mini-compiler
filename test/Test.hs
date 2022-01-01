@@ -8,5 +8,5 @@ import TestData
 import ParserTest
 
 main = do
-    s <- readProgram "div_by_zero.l1"
     runTestTT parserTest
+    

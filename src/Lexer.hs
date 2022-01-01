@@ -1,5 +1,7 @@
 module Lexer where
 
+import Data.Functor
+
 import Text.Parsec
 import Text.ParserCombinators.Parsec hiding (try)
 import qualified Text.Parsec.Token as Tok
@@ -40,11 +42,21 @@ lexDef = Tok.LanguageDef
 lexer :: Tok.TokenParser ()
 lexer = Tok.makeTokenParser lexDef
 
+pDecimal :: Parser Integer 
+pDecimal = try dec 
+       <|> char '0' $> 0
+    where
+        dec = do
+            pre <- oneOf "123456789"
+            suf <- many $ oneOf "0123456789"
+            return $ read (pre : suf)
+
+lexeme = Tok.lexeme lexer
 ident = Tok.identifier lexer
 parens = Tok.parens lexer
 reserved = Tok.reserved lexer
 reservedOp = Tok.reservedOp lexer
-semi = Tok.lexeme lexer $ string ";"
+semi = Tok.lexeme lexer $ char ';'
 braces = Tok.braces lexer
-decimal = Tok.lexeme lexer $ Tok.decimal lexer
+decimal = lexeme pDecimal
 whiteSpace = Tok.whiteSpace lexer
