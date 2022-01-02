@@ -1,0 +1,12 @@
+//test error
+
+int main() {
+    int a = 2378231;
+    int b = 0;
+
+    int c = a / b;
+
+
+
+            return d;
+}

@@ -1,0 +1,12 @@
+//test error
+
+int main() {
+    int a = 10 + 9 + 8 * 7 / 6 + 5 - (-9);
+    int b;
+    int c = 293;
+    
+    c += a;
+
+
+    return a + b + c;
+}

@@ -30,6 +30,7 @@ executable compiler
     Parser
     StaticCheck
     Compiler
+    SSA
   hs-source-dirs:
     src
   build-depends:
@@ -50,6 +51,7 @@ test-suite mini-compiler-test
     Parser
     StaticCheck
     Compiler
+    SSA
     TestData
     ParserTest
   ghc-options: -threaded -rtsopts -with-rtsopts=-N

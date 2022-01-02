@@ -9,6 +9,6 @@ import TestData
 import ParserTest
 
 main = do
-    -- s <- readProgram "fibonacci.l1"
-    -- print $ toSSA <$> parseProgram s
+    s <- readProgram "no_init.l1"
+    print $ compile s
     runTestTT parserTest
