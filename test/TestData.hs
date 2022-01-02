@@ -11,6 +11,7 @@ tests =
     , ("div_by_zero.l1", True)
     , ("fibonacci.l1", True)
     , ("operators.l1", True)
+    , ("no_return.l1", True)
     ]
 
 fetchTests :: [IO (String, Bool)]

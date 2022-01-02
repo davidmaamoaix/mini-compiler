@@ -1,0 +1,27 @@
+//test return i
+
+int main() {
+    int a;
+    int b;
+
+    // initiaiyhdiudahallize!!!!
+    a = 0;b=1;
+
+    //hehe
+    {
+        a = b;
+        b +=a;
+
+        a = b;
+        b +=a;
+
+        a = b;
+        b +=a;
+
+        a = b;
+        b +=a;
+        
+        a = b;
+        b +=a;
+    }
+}
