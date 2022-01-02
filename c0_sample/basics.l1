@@ -3,9 +3,7 @@
 int main() {
     int a = 20;
     int b;
-
-    int hello = 10;
-    int me = 20;
+    b = 2;
 
     b = 30;
     a += b;

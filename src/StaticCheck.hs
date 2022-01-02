@@ -28,6 +28,10 @@ data Env = Env
     , code :: [SSA]
     } deriving Show
 
+-- TODO: lens this
+appendSSA :: SSA -> State Env ()
+appendSSA s = modify $ \(Env cnt ref ssa) -> Env cnt ref (ssa ++ [s])
+
 -- Gets the register ID corresponding to a variable. Note
 -- that each assignment to variable creates a new register.
 -- Creats the register if it does not exist.
@@ -35,12 +39,12 @@ getVarReg :: String -> Bool -> State Env Int
 getVarReg s fresh = do
     env <- get
     let refMap = varRef env
-    if M.member s refMap && not fresh
-        then return (refMap M.! s)
-        else do
+    if fresh
+        then do
             count <- allocReg
             modify $ \(Env cnt ref ssa) -> Env cnt (M.insert s count ref) ssa
             return count
+        else return (refMap M.! s)
 
 allocReg :: State Env Int
 allocReg = do
@@ -57,53 +61,50 @@ toSSA :: Node Prog -> [SSA]
 toSSA (NProg xs) = code $ execState convert (Env 0 M.empty [])
     where
         convert :: State Env ()
-        convert = forM_ (reverse xs) stmtToSSA
+        convert = forM_ xs stmtToSSA
 
 stmtToSSA :: Node Stmt -> State Env ()
-stmtToSSA (NBlockStmt xs) = forM_ (reverse xs) stmtToSSA
+stmtToSSA (NBlockStmt xs) = forM_ xs stmtToSSA
 stmtToSSA (NSimpStmt (NSimp (NIdL l) Asn exp)) = do
     reg <- getVarReg l True
     loadToReg exp reg
-    return ()
 stmtToSSA (NSimpStmt (NSimp (NIdL l) op exp)) = do
     src <- getVarReg l False
     new <- getVarReg l True
     opReg <- allocReg
     loadToReg exp opReg
     let func = case op of
-            AddAsn -> Add 
-            SubAsn -> Sub 
-            MulAsn -> Mul 
-            DivAsn -> Div 
+            AddAsn -> Add
+            SubAsn -> Sub
+            MulAsn -> Mul
+            DivAsn -> Div
             ModAsn -> Mod
             Asn -> error "impossible"
-    modify $ \(Env cnt ref ssa) -> Env cnt ref (SBinFunc new func (VReg src) (VReg opReg) : ssa)
+    appendSSA $ SBinFunc new func (VReg src) (VReg opReg)
 stmtToSSA (NRetStmt exp) = do
     reg <- allocReg
     loadToReg exp reg
-    modify $ \(Env cnt ref ssa) -> Env cnt ref (SRet (VReg reg) : ssa)
-    return ()
+    appendSSA $ SRet (VReg reg)
 stmtToSSA (NDeclStmt (NDecl s)) = return ()
 stmtToSSA (NDeclStmt (NDeclAsn s exp)) = do
     reg <- getVarReg s True
     loadToReg exp reg
-    return ()
 
 -- Generates SSA code that loads the evaluated value of
 -- an Exp node to a given register.
 -- TODO: lens the whole "editing environment" thingy and add optimization rules
 loadToReg :: Node Exp -> RegId -> State Env ()
-loadToReg (NIntExp num) dest = modify $ \(Env cnt ref ssa) -> Env cnt ref (SMove dest (VLit num) : ssa)
+loadToReg (NIntExp num) dest = appendSSA $ SMove dest (VLit num)
 loadToReg (NIdExp s) dest = do
     reg <- getVarReg s False
-    modify $ \(Env cnt ref ssa) -> Env cnt ref (SMove dest (VReg reg) : ssa)
+    appendSSA $ SMove dest (VReg reg)
 loadToReg (NBinExp a op b) dest = do
     regA <- allocReg
     regB <- allocReg
     loadToReg a regA
     loadToReg b regB
-    modify $ \(Env cnt ref ssa) -> Env cnt ref (SBinFunc dest op (VReg regA) (VReg regB) : ssa)
+    appendSSA $ SBinFunc dest op (VReg regA) (VReg regB)
 loadToReg (NNegExp e) dest = do
     reg <- allocReg
     loadToReg e reg
-    modify $ \(Env cnt ref ssa) -> Env cnt ref (SNeg dest (VReg reg) : ssa)
+    appendSSA $ SNeg dest (VReg reg)
