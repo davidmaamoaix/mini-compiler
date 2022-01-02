@@ -36,8 +36,7 @@ appendSSA s = modify $ \(Env cnt ref ssa) -> Env cnt ref (s : ssa)
 -- Creats the register if it does not exist.
 getVarReg :: String -> Bool -> State Env Int
 getVarReg s fresh = do
-    env <- get
-    let refMap = varRef env
+    refMap <- gets varRef
     if fresh
         then do
             count <- allocReg
