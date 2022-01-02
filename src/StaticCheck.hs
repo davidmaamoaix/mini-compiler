@@ -48,7 +48,7 @@ staticCheck (NProg xs) = do
         result = runStateT (runExceptT (controlFlow True xs)) M.empty
 
 -- mustRet :: Bool denotes whether an error is thrown if
--- an empty list is encountered without short-wiring by a
+-- an empty list is encountered without short-wired by a
 -- return statement (indicating missing return).
 controlFlow :: Bool -> [Node Stmt] -> FlowState
 controlFlow True [] = throwError "No return statement in control flow"

@@ -9,6 +9,6 @@ import TestData
 import ParserTest
 
 main = do
-    s <- readProgram "no_init.l1"
+    s <- readProgram "flow_intercept.l1"
     print $ compile s
     runTestTT parserTest
