@@ -2,11 +2,14 @@
 
 module RegAlloc where
 
+import Control.Lens
 import qualified Data.Set as S
 
 import SSA
 
 type LiveInfo = [S.Set RegId]
+
+updateLiveInfo k v m = m & element k .~ v
 
 liveness :: [SSA] -> LiveInfo
 liveness xs = iter (S.empty <$ xs) $ reverse xs
@@ -16,8 +19,9 @@ liveness xs = iter (S.empty <$ xs) $ reverse xs
         iter s (x:xs) = iter (foldr (propagate xs) s (allUsed x)) xs
         propagate :: [SSA] -> RegId -> [S.Set RegId] -> [S.Set RegId]
         propagate [] _ _ = []
-        propagate (x:xs) r s = undefined
-
+        propagate (x:xs) r s = propagate xs r ns
+            where
+                ns = undefined
 
 usedInValue :: Value -> S.Set RegId
 usedInValue (VLit _) = S.empty
