@@ -29,6 +29,7 @@ executable compiler
     Lexer
     Parser
     StaticCheck
+    RegAlloc
     Compiler
     SSA
   hs-source-dirs:
@@ -50,6 +51,7 @@ test-suite mini-compiler-test
     Lexer
     Parser
     StaticCheck
+    RegAlloc
     Compiler
     SSA
     TestData

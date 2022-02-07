@@ -21,8 +21,12 @@ compile :: String -> Either CompilerError String
 compile s = do
     ast <- either (Left . convertParseError) Right (parseProgram s)
     case staticCheck ast of
-        Right _ -> return ""
+        Right _ -> convert ast
         Left msg -> Left $ StaticCheckError msg
+    where
+        convert ast = do
+            
+            return ""
 
 convertParseError :: ParseError -> CompilerError
 convertParseError pErr = SyntaxError (errPos pErr) (errInfo pErr)
