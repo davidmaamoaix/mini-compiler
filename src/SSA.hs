@@ -2,6 +2,7 @@
 
 module SSA where
 
+import Data.Maybe (isNothing)
 import Control.Monad
 import Control.Monad.State.Lazy
 import qualified Data.Map as M
@@ -37,7 +38,7 @@ appendSSA s = modify $ \(Env cnt ref ssa) -> Env cnt ref (s : ssa)
 getVarReg :: String -> Bool -> State Env Int
 getVarReg s fresh = do
     refMap <- gets varRef
-    if fresh
+    if fresh || isNothing (M.lookup s refMap)
         then do
             count <- allocReg
             modify $ \(Env cnt ref ssa) -> Env cnt (M.insert s count ref) ssa

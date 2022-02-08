@@ -9,7 +9,7 @@ import SSA
 
 type LiveInfo = [S.Set RegId]
 
-updateLiveInfo k v m = m & element k .~ v
+updateLiveInfo k v m = m & element k %~ S.insert v
 
 liveness :: [SSA] -> LiveInfo
 liveness xs = iter (S.empty <$ xs) $ reverse xs
@@ -19,9 +19,13 @@ liveness xs = iter (S.empty <$ xs) $ reverse xs
         iter s (x:xs) = iter (foldr (propagate xs) s (allUsed x)) xs
         propagate :: [SSA] -> RegId -> [S.Set RegId] -> [S.Set RegId]
         propagate [] _ _ = []
-        propagate (x:xs) r s = propagate xs r ns
+        propagate (x:xs) r s = let (ns, cont) = curr in
+                if cont then propagate xs r ns
+                else ns
             where
-                ns = undefined
+                curr = if def x r
+                    then (s, False)
+                    else (updateLiveInfo (length xs) r s, True)
 
 usedInValue :: Value -> S.Set RegId
 usedInValue (VLit _) = S.empty

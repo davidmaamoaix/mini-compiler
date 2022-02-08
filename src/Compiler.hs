@@ -2,11 +2,12 @@ module Compiler where
 
 import Text.Parsec.Pos
 import Text.Parsec.Error
+import Control.Monad (guard)
 
+import SSA
 import Parser (parseProgram)
 import Text.ParserCombinators.Parsec (sourceColumn)
 import StaticCheck (staticCheck)
-import Control.Monad (guard)
 
 formatParseError = showErrorMessages 
     "or" "unknown parse error"
@@ -25,8 +26,8 @@ compile s = do
         Left msg -> Left $ StaticCheckError msg
     where
         convert ast = do
-            
-            return ""
+            let ssa = toSSA ast
+            return $ show ssa
 
 convertParseError :: ParseError -> CompilerError
 convertParseError pErr = SyntaxError (errPos pErr) (errInfo pErr)
