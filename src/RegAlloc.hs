@@ -16,7 +16,7 @@ liveness xs = iter (S.empty <$ xs) $ reverse xs
     where
         iter :: [S.Set RegId] -> [SSA] -> [S.Set RegId]
         iter s [] = s
-        iter s (x:xs) = iter (foldr (propagate xs) s (allUsed x)) xs
+        iter s ls@(x:xs) = iter (foldr (propagate ls) s (allUsed x)) xs
         propagate :: [SSA] -> RegId -> [S.Set RegId] -> [S.Set RegId]
         propagate [] _ _ = []
         propagate (x:xs) r s = let (ns, cont) = curr in

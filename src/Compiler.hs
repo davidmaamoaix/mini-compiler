@@ -5,6 +5,7 @@ import Text.Parsec.Error
 import Control.Monad (guard)
 
 import SSA
+import RegAlloc (liveness)
 import Parser (parseProgram)
 import Text.ParserCombinators.Parsec (sourceColumn)
 import StaticCheck (staticCheck)
@@ -27,7 +28,7 @@ compile s = do
     where
         convert ast = do
             let ssa = toSSA ast
-            return $ show ssa
+            return $ show $ liveness ssa
 
 convertParseError :: ParseError -> CompilerError
 convertParseError pErr = SyntaxError (errPos pErr) (errInfo pErr)
