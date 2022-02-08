@@ -38,12 +38,13 @@ appendSSA s = modify $ \(Env cnt ref ssa) -> Env cnt ref (s : ssa)
 getVarReg :: String -> Bool -> State Env Int
 getVarReg s fresh = do
     refMap <- gets varRef
-    if fresh || isNothing (M.lookup s refMap)
-        then do
+    let regId = M.lookup s refMap
+    maybe updateReg (\r -> if fresh then updateReg else return r) regId
+    where
+        updateReg = do
             count <- allocReg
             modify $ \(Env cnt ref ssa) -> Env cnt (M.insert s count ref) ssa
             return count
-        else return (refMap M.! s)
 
 allocReg :: State Env Int
 allocReg = do
