@@ -28,7 +28,7 @@ compile s = do
     where
         convert ast = do
             let ssa = toSSA ast
-            return $ show $ liveness ssa
+            return $ show $ id ssa
 
 convertParseError :: ParseError -> CompilerError
 convertParseError pErr = SyntaxError (errPos pErr) (errInfo pErr)

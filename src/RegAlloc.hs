@@ -4,10 +4,26 @@ module RegAlloc where
 
 import Control.Lens
 import qualified Data.Set as S
+import qualified Data.Map as M
 
 import SSA
 
 type LiveInfo = [S.Set RegId]
+
+data AsmReg
+    = RAX | RBX | RCX | RDX
+    | RSI | RDI | RBP | RSP
+    | R08 | R09 | R10 | R11
+    | R12 | R13 | R14 | R15
+
+data InterGraph c = IGraph
+    { nodes :: Int
+    , edges :: M.Map Int (S.Set Int)
+    , color :: M.Map Int c
+    }
+
+instance Functor InterGraph where
+    fmap f (IGraph n e c) = IGraph n e (f <$> c)
 
 updateLiveInfo k v m = m & element k %~ S.insert v
 
