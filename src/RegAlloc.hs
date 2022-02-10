@@ -29,7 +29,11 @@ instance Functor InterGraph where
 updateLiveInfo k v m = m & element k %~ S.insert v
 
 genInterGraph :: IR -> InterGraph a
-genInterGraph (IR n xs) = IGraph n M.empty M.empty
+genInterGraph (IR n xs) = IGraph n (interfere xs) M.empty
+    where
+        interfere xs = iter (liveness xs) M.empty
+        iter xs m = update (zipWith S.union xs (tail xs)) m
+        update s m = undefined
 
 liveness :: [SSA] -> LiveInfo
 liveness xs = iter (S.empty <$ xs) $ reverse xs
