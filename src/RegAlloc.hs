@@ -3,12 +3,16 @@
 module RegAlloc where
 
 import Control.Lens
+import qualified Data.List as L
 import qualified Data.Set as S
 import qualified Data.Map as M
 
 import SSA
 
-type LiveInfo = [S.Set RegId]
+data LiveInfo = LiveInfo
+    { lDef :: [Maybe RegId]
+    , lLive :: [S.Set RegId]
+    } deriving Show
 
 data AsmReg
     = RAX | RBX | RCX | RDX
@@ -26,30 +30,36 @@ data InterGraph c = IGraph
 instance Functor InterGraph where
     fmap f (IGraph n e c) = IGraph n e (f <$> c)
 
-updateLiveInfo k v m = m & element k %~ S.insert v
-
-genInterGraph :: IR -> InterGraph a
-genInterGraph (IR n xs) = IGraph n (interfere xs) M.empty
+updateLiveInfo k d v (LiveInfo ds ls) = LiveInfo nd (ls & element k %~ S.insert v)
     where
-        interfere xs = iter (liveness xs) M.empty
-        iter xs m = update (zipWith S.union xs (tail xs)) m
-        update s m = undefined
+        nd = ds & element k .~ d
+
+-- TODO: dest at l interferes with live at l+1
+genInterGraph :: IR -> InterGraph a
+genInterGraph (IR n xs) = IGraph n (genEdges xs) M.empty
+    where
+        genEdges xs = conflict (lLive $ liveness xs)
+        conflict l = foldr updateBoth M.empty $ l >>= (pairs . S.toList)
+        updateBoth (a, b) m = update (a, b) (update (b, a) m)
+        update (k, v) m = M.insertWith S.union k (S.singleton v) m
+        pairs l = [(x, y) | (x:xs) <- L.tails l, y <- xs]
 
 liveness :: [SSA] -> LiveInfo
-liveness xs = iter (S.empty <$ xs) $ reverse xs
+liveness xs = iter (LiveInfo (Nothing <$ xs) (S.empty <$ xs)) $ reverse xs
     where
-        iter :: [S.Set RegId] -> [SSA] -> [S.Set RegId]
+        iter :: LiveInfo -> [SSA] -> LiveInfo
         iter s [] = s
         iter s ls@(x:xs) = iter (foldr (propagate ls) s (allUsed x)) xs
-        propagate :: [SSA] -> RegId -> [S.Set RegId] -> [S.Set RegId]
-        propagate [] _ _ = []
-        propagate (x:xs) r s = let (ns, cont) = curr in
+        propagate :: [SSA] -> RegId -> LiveInfo -> LiveInfo
+        propagate [] _ l = l
+        propagate (x:xs) r i@(LiveInfo d l) = let (ns, cont) = curr in
                 if cont then propagate xs r ns
                 else ns
             where
-                curr = if def x r
-                    then (s, False)
-                    else (updateLiveInfo (length xs) r s, True)
+                curr = let currDef = getDef x in
+                    if def x r
+                    then (LiveInfo (d & element (length xs) ?~ r) l, False)
+                    else (updateLiveInfo (length xs) currDef r i, True)
 
 usedInValue :: Value -> S.Set RegId
 usedInValue (VLit _) = S.empty
@@ -60,6 +70,12 @@ allUsed (SMove _ s) = usedInValue s
 allUsed (SNeg _ s) = usedInValue s
 allUsed (SRet s) = usedInValue s
 allUsed (SBinFunc _ _ a b) = usedInValue a `S.union` usedInValue b
+
+getDef :: SSA -> Maybe RegId
+getDef (SMove d _) = Just d
+getDef (SNeg d _) = Just d
+getDef (SRet _) = Nothing
+getDef (SBinFunc d _ _ _) = Just d 
 
 use :: SSA -> RegId -> Bool
 use (SMove _ s) r = S.member r (usedInValue s)
