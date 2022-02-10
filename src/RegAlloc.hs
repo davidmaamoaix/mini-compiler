@@ -15,17 +15,21 @@ data AsmReg
     | RSI | RDI | RBP | RSP
     | R08 | R09 | R10 | R11
     | R12 | R13 | R14 | R15
+    deriving Show
 
 data InterGraph c = IGraph
-    { nodes :: Int
-    , edges :: M.Map Int (S.Set Int)
-    , color :: M.Map Int c
+    { gNodes :: Int
+    , gEdges :: M.Map Int (S.Set Int)
+    , gColor :: M.Map Int c
     }
 
 instance Functor InterGraph where
     fmap f (IGraph n e c) = IGraph n e (f <$> c)
 
 updateLiveInfo k v m = m & element k %~ S.insert v
+
+genInterGraph :: IR -> InterGraph a
+genInterGraph (IR n xs) = IGraph n M.empty M.empty
 
 liveness :: [SSA] -> LiveInfo
 liveness xs = iter (S.empty <$ xs) $ reverse xs

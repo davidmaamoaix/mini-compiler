@@ -5,7 +5,7 @@ import Text.Parsec.Error
 import Control.Monad (guard)
 
 import SSA
-import RegAlloc (liveness)
+import RegAlloc
 import Parser (parseProgram)
 import Text.ParserCombinators.Parsec (sourceColumn)
 import StaticCheck (staticCheck)
@@ -27,8 +27,9 @@ compile s = do
         Left msg -> Left $ StaticCheckError msg
     where
         convert ast = do
-            let ssa = toSSA ast
-            return $ show $ ssa
+            let ir = toSSA ast
+            let interGraph = genInterGraph ir
+            return $ show $ gEdges interGraph
 
 convertParseError :: ParseError -> CompilerError
 convertParseError pErr = SyntaxError (errPos pErr) (errInfo pErr)
