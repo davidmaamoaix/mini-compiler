@@ -57,7 +57,7 @@ liveness xs = iter (LiveInfo (Nothing <$ xs) (S.empty <$ xs)) $ reverse xs
                 else ns
             where
                 curr = let currDef = getDef x in
-                    if def x r
+                    if Just r == currDef
                     then (LiveInfo (d & element (length xs) ?~ r) l, False)
                     else (updateLiveInfo (length xs) currDef r i, True)
 
