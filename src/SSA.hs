@@ -22,6 +22,8 @@ data SSA
     | SBinFunc { dest :: RegId, func :: BinOp, op1, op2 :: Value }
     deriving Show
 
+data IR = IR { irVars :: Int, irCode :: [SSA] } deriving Show
+
 data Env = Env
     { varCount :: Int
     , varRef :: M.Map String Int
@@ -54,9 +56,10 @@ allocReg = do
 
 -- Converts code to Static Single Assignment form.
 -- TODO: change to target a function in future labs.
-toSSA :: Node Prog -> [SSA]
-toSSA (NProg xs) = reverse $ code $ execState convert (Env 0 M.empty [])
+toSSA :: Node Prog -> IR
+toSSA (NProg xs) = IR (varCount env) (reverse . code $ env)
     where
+        env = execState convert (Env 0 M.empty [])
         convert :: State Env ()
         convert = forM_ xs stmtToSSA
 
