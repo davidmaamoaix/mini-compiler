@@ -76,17 +76,3 @@ getDef (SMove d _) = Just d
 getDef (SNeg d _) = Just d
 getDef (SRet _) = Nothing
 getDef (SBinFunc d _ _ _) = Just d 
-
-use :: SSA -> RegId -> Bool
-use (SMove _ s) r = S.member r (usedInValue s)
-use (SNeg _ s) r = S.member r (usedInValue s)
-use (SRet s) r = S.member r (usedInValue s)
-use (SBinFunc _ _ a b) r = S.member r set
-    where
-        set = usedInValue a `S.union` usedInValue b
-
-def :: SSA -> RegId -> Bool
-def (SMove d _) r = d == r
-def (SNeg d _) r = d == r
-def (SRet _) _ = False
-def (SBinFunc d _ _ _) r = d == r
