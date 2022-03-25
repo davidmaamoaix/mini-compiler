@@ -22,19 +22,37 @@ data AsmReg
     deriving Show
 
 data InterGraph c = IGraph
-    { gNodes :: Int
-    , gEdges :: M.Map Int (S.Set Int)
-    , gColor :: M.Map Int c
+    { gNodes :: RegId
+    , gEdges :: M.Map RegId (S.Set RegId)
+    , gColor :: M.Map RegId c
+    }
+
+data ColorState = CState
+    { ord :: [RegId]
+    , weights :: [Int]
+    , verts :: S.Set RegId
     }
 
 instance Functor InterGraph where
     fmap f (IGraph n e c) = IGraph n e (f <$> c)
 
+simpOrdering :: InterGraph c -> [RegId]
+simpOrdering (IGraph n edges _) = ord $ foldr iter initState [1..n]
+    where
+        iter _ s@(CState ord w v) = insertMax (maxVert w v) s
+        insertMax t (CState ord w v) = CState (t:ord) (updateW v w t) (S.delete t v)
+        updateW nodes weights t = foldr (\a w -> w & element a %~ (+ 1)) weights inter
+            where
+                inter = S.toList $ S.intersection nodes (edges M.! t)
+        initState = CState [] initWeights initVerts
+        initWeights = replicate n 0
+        initVerts = S.fromList [0..n-1]
+        maxVert w v = L.maximumBy (\a b -> compare (w !! a) (w !! b)) v
+
 updateLiveInfo k d v (LiveInfo ds ls) = LiveInfo nd (ls & element k %~ S.insert v)
     where
         nd = ds & element k .~ d
 
--- TODO: dest at l interferes with live at l+1
 genInterGraph :: IR -> InterGraph a
 genInterGraph (IR n xs) = IGraph n genEdges M.empty
     where
