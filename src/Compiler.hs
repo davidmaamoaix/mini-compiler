@@ -29,7 +29,7 @@ compile s = do
         convert ast = do
             let ir = toSSA ast
             let interGraph = genInterGraph ir
-            return $ show $ liveness $ irCode ir--gEdges interGraph
+            return $ show $ gEdges interGraph
 
 convertParseError :: ParseError -> CompilerError
 convertParseError pErr = SyntaxError (errPos pErr) (errInfo pErr)

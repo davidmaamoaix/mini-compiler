@@ -36,11 +36,15 @@ updateLiveInfo k d v (LiveInfo ds ls) = LiveInfo nd (ls & element k %~ S.insert 
 
 -- TODO: dest at l interferes with live at l+1
 genInterGraph :: IR -> InterGraph a
-genInterGraph (IR n xs) = IGraph n (genEdges xs) M.empty
+genInterGraph (IR n xs) = IGraph n genEdges M.empty
     where
-        genEdges xs = conflict (lLive $ liveness xs)
+        live = liveness xs
+        genEdges = destLiveConf (conflict (lLive live)) live
+        destLiveConf m (LiveInfo def live) = foldr conn m (zip def $ tail live)
+        conn (Nothing, _) m = m
+        conn (Just r, xs) m = foldr updateBoth m (zip (repeat r) $ S.toList xs)
         conflict l = foldr updateBoth M.empty $ l >>= (pairs . S.toList)
-        updateBoth (a, b) m = update (a, b) (update (b, a) m)
+        updateBoth (a, b) m = if a /= b then update (a, b) (update (b, a) m) else m
         update (k, v) m = M.insertWith S.union k (S.singleton v) m
         pairs l = [(x, y) | (x:xs) <- L.tails l, y <- xs]
 
