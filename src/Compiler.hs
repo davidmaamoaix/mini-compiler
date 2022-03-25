@@ -4,6 +4,9 @@ import Text.Parsec.Pos
 import Text.Parsec.Error
 import Control.Monad (guard)
 
+import qualified Data.Map as M
+import qualified Data.Set as S
+
 import SSA
 import RegAlloc
 import Parser (parseProgram)
@@ -29,7 +32,9 @@ compile s = do
         convert ast = do
             let ir = toSSA ast
             let interGraph = genInterGraph ir
-            return $ show $ gEdges interGraph
+            let ordering = simpOrdering interGraph
+            return $ show $ simpOrdering (IGraph 6 (M.fromList [
+                (1, S.fromList[2, 3]), (2, S.fromList[1, 3, 4]), (3, S.fromList[1, 2, 5]), (4, S.fromList[2, 3]), (5, S.fromList[3])]) M.empty)
 
 convertParseError :: ParseError -> CompilerError
 convertParseError pErr = SyntaxError (errPos pErr) (errInfo pErr)

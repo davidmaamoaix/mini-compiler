@@ -7,6 +7,8 @@ import qualified Data.List as L
 import qualified Data.Set as S
 import qualified Data.Map as M
 
+import Debug.Trace
+
 import SSA
 
 data LiveInfo = LiveInfo
@@ -37,13 +39,14 @@ instance Functor InterGraph where
     fmap f (IGraph n e c) = IGraph n e (f <$> c)
 
 simpOrdering :: InterGraph c -> [RegId]
-simpOrdering (IGraph n edges _) = ord $ foldr iter initState [1..n]
+simpOrdering (IGraph n edges _) = reverse $ ord $ foldr iter initState [1..n]
     where
         iter _ s@(CState ord w v) = insertMax (maxVert w v) s
         insertMax t (CState ord w v) = CState (t:ord) (updateW v w t) (S.delete t v)
         updateW nodes weights t = foldr (\a w -> w & element a %~ (+ 1)) weights inter
             where
-                inter = S.toList $ S.intersection nodes (edges M.! t)
+                inter = S.toList $ S.intersection nodes connections
+                connections = M.findWithDefault S.empty t edges
         initState = CState [] initWeights initVerts
         initWeights = replicate n 0
         initVerts = S.fromList [0..n-1]
