@@ -3,6 +3,8 @@
 module RegAlloc where
 
 import Control.Lens
+import Control.Monad.State.Lazy
+
 import qualified Data.List as L
 import qualified Data.Set as S
 import qualified Data.Map as M
@@ -29,6 +31,13 @@ data InterGraph c = IGraph
     , gColor :: M.Map RegId c
     }
 
+-- Must have a way to get the lowest unused register.
+class Ord c => LowBound c where
+    lowest :: S.Set c -> c
+
+instance LowBound Int where
+    lowest s = foldr (\a b -> if S.member a s then b else a) (-1) [0..]
+
 data ColorState = CState
     { ord :: [RegId]
     , weights :: [Int]
@@ -37,6 +46,21 @@ data ColorState = CState
 
 instance Functor InterGraph where
     fmap f (IGraph n e c) = IGraph n e (f <$> c)
+
+greedyColor :: (Show c, LowBound c) => InterGraph c -> InterGraph c
+greedyColor g = execState gState g
+    where
+        order = simpOrdering g
+        update :: RegId -> c -> InterGraph c -> InterGraph c
+        update i asn (IGraph n e c) = IGraph n e (M.insert i asn c)
+        gState :: (Show c, LowBound c) => State (InterGraph c) ()
+        gState = do
+            forM_ order $ \i -> do
+                g <- gets id
+                let neigh = M.findWithDefault S.empty i $ gEdges g
+                    asn = lowest $ used (gColor g) neigh
+                modify $ update i asn
+        used c s = S.fromList $ fmap snd $ filter (\(k, v) -> S.member k s) $ M.toList c
 
 simpOrdering :: InterGraph c -> [RegId]
 simpOrdering (IGraph n edges _) = reverse $ ord $ foldr iter initState [1..n]
