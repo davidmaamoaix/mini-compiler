@@ -47,13 +47,13 @@ data ColorState = CState
 instance Functor InterGraph where
     fmap f (IGraph n e c) = IGraph n e (f <$> c)
 
-greedyColor :: (Show c, LowBound c) => InterGraph c -> InterGraph c
+greedyColor :: LowBound c => InterGraph c -> InterGraph c
 greedyColor g = execState gState g
     where
         order = simpOrdering g
         update :: RegId -> c -> InterGraph c -> InterGraph c
         update i asn (IGraph n e c) = IGraph n e (M.insert i asn c)
-        gState :: (Show c, LowBound c) => State (InterGraph c) ()
+        gState :: LowBound c => State (InterGraph c) ()
         gState = do
             forM_ order $ \i -> do
                 g <- gets id
