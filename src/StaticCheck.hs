@@ -2,10 +2,10 @@
 
 module StaticCheck where
 
-import Debug.Trace
 import Control.Monad
 import Control.Monad.Except
 import Control.Monad.State.Lazy
+import Data.Functor ((<&>))
 import Data.Functor.Identity
 import qualified Data.Map.Strict as M
 
@@ -18,24 +18,30 @@ data VarState
     deriving (Eq, Show)
 
 type FlowEnv = M.Map String VarState
-type FlowState = ExceptT String (State FlowEnv) ()
+type FlowState a = ExceptT String (State FlowEnv) a
 
-assertVarState :: String -> (VarState -> Bool) -> String -> FlowState
-assertVarState var p errMsg = do
-    env <- lift get
-    unless (p $ M.findWithDefault VUnseen var env)
-        $ throwError (errMsg ++ var)
+unseenMsg = "Undeclared variable: "
+notInitMsg = "Variable is not initialized when used: "
 
-assertDecl :: String -> FlowState
-assertDecl s = assertVarState s (/= VUnseen) "Undeclared variable: "
+getVarState :: String -> FlowState VarState
+getVarState name = lift get <&> M.findWithDefault VUnseen name
 
-assertInit :: String -> FlowState
-assertInit s = assertDecl s *> assertVarState s (== VInit) msg
-    where
-        msg = "Variable is not initialized when used: "
-
-setVarState :: String -> VarState -> FlowState
+setVarState :: String -> VarState -> FlowState ()
 setVarState var st = modify $ M.insert var st
+
+-- A state that fails if the "variable state" of the given variable
+-- fails the given predicate.
+assertVarState :: String -> (VarState -> Bool) -> String -> FlowState ()
+assertVarState name p errMsg = do
+    state <- getVarState name
+    unless (p state) $ throwError (errMsg ++ name)
+
+assertDecl :: String -> FlowState ()
+assertDecl s = assertVarState s (/= VUnseen) unseenMsg
+
+assertInit :: String -> FlowState ()
+-- Calls "assertDecl" for undeclared error message.
+assertInit s = assertDecl s *> assertVarState s (== VInit) notInitMsg
 
 staticCheck :: Node Prog -> Either String FlowEnv
 staticCheck (NProg xs) = do
@@ -45,12 +51,12 @@ staticCheck (NProg xs) = do
         Right env -> error $ show out
         _ -> out <$ err
     where
-        result = runStateT (runExceptT (controlFlow True xs)) M.empty
+        result = (runStateT $ runExceptT $ controlFlow True xs) M.empty
 
--- mustRet :: Bool denotes whether an error is thrown if
--- an empty list is encountered without short-wired by a
--- return statement (indicating missing return).
-controlFlow :: Bool -> [Node Stmt] -> FlowState
+-- mustRet :: Bool denotes whether an error is thrown if an empty list
+-- is encountered without short-wired by a return statement (indicating
+-- missing return).
+controlFlow :: Bool -> [Node Stmt] -> FlowState ()
 controlFlow True [] = throwError "No return statement in control flow"
 controlFlow False [] = return ()
 controlFlow mustRet (x:xs) = do

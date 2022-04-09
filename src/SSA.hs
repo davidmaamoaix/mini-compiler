@@ -4,8 +4,6 @@
 
 module SSA where
 
-import Debug.Trace
-
 import Data.Maybe (isNothing, fromJust)
 import Control.Monad
 import Control.Monad.State.Lazy
