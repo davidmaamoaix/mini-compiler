@@ -4,6 +4,8 @@
 
 module SSA where
 
+import Debug.Trace
+
 import Data.Maybe (isNothing, fromJust)
 import Control.Monad
 import Control.Monad.State.Lazy
@@ -47,13 +49,12 @@ newReg :: String -> State Env Int
 newReg name = do
     reg <- allocReg
     -- Set the corresponding register ID to a newly allocated one.
-    modify (& varReg name ?~ reg)
-    return reg
+    varReg name <?= reg
 
 move :: Value -> RegId -> State Env [SSA]
 move val dest = return [SMove dest val]
 
--- Code for loading an exp to a register.
+-- State for generating code for loading an exp to a register.
 loadToReg :: Node Exp -> RegId -> State Env [SSA]
 loadToReg (NIntExp num) dest = move (VLit num) dest
 loadToReg (NIdExp s) dest = do
@@ -62,13 +63,13 @@ loadToReg (NIdExp s) dest = do
 loadToReg (NBinExp a op b) dest = do
     regA <- allocReg
     regB <- allocReg
-    loadToReg a regA
-    loadToReg b regB
-    appendSSA $ SBinFunc dest op (VReg regA) (VReg regB)
+    codeA <- loadToReg a regA
+    codeB <- loadToReg b regB
+    return $ codeA ++ codeB ++ [SBinFunc dest op (VReg regA) (VReg regB)]
 loadToReg (NNegExp e) dest = do
     reg <- allocReg
-    loadToReg e reg
-    appendSSA $ SNeg dest (VReg reg)
+    code <- loadToReg e reg
+    return $ code ++ [SNeg dest (VReg reg)]
 
 -- Converts code to Static Single Assignment form.
 -- TODO: change to target a function in future labs.
@@ -78,29 +79,29 @@ toSSA (NProg xs) = IR (varCount $ snd result) (concat $ fst result)
         result :: ([[SSA]], Env)
         result = runState (forM xs stmtToSSA) (Env 0 M.empty)
 
+binOpCode :: String -> Node Exp -> BinOp -> State Env [SSA]
+binOpCode name exp func = do
+    src <- use $ varReg name
+    new <- newReg name
+    opReg <- allocReg
+    code <- loadToReg exp opReg
+    return [SBinFunc new func (VReg $ fromJust src) (VReg opReg)]
+
+-- State for converting a statement into SSA form.
 stmtToSSA :: Node Stmt -> State Env [SSA]
 stmtToSSA (NBlockStmt xs) = concat <$> forM xs stmtToSSA
-stmtToSSA (NSimpStmt (NSimp l Asn exp)) = do
-    reg <- getVarReg l True
-    loadToReg exp reg
-stmtToSSA (NSimpStmt (NSimp l op exp)) = do
-    src <- getVarReg l False
-    new <- getVarReg l True
-    opReg <- allocReg
-    loadToReg exp opReg
-    let func = case op of
-            AddAsn -> Add
-            SubAsn -> Sub
-            MulAsn -> Mul
-            DivAsn -> Div
-            ModAsn -> Mod
-            Asn -> error "impossible"
-    appendSSA $ SBinFunc new func (VReg src) (VReg opReg)
+stmtToSSA (NSimpStmt (NSimp (NIdL l) op exp)) = let bin = binOpCode l exp in
+    case op of
+        AddAsn -> bin Add
+        SubAsn -> bin Sub
+        MulAsn -> bin Mul
+        DivAsn -> bin Div
+        ModAsn -> bin Mod
+        Asn -> newReg l >>= loadToReg exp
 stmtToSSA (NRetStmt exp) = do
     reg <- allocReg
-    loadToReg exp reg
-    appendSSA $ SRet (VReg reg)
-stmtToSSA (NDeclStmt (NDecl s)) = return ()
-stmtToSSA (NDeclStmt (NDeclAsn s exp)) = do
-    reg <- getVarReg s True
-    loadToReg exp reg
+    code <- loadToReg exp reg
+    return $ code ++ [SRet (VReg reg)]
+stmtToSSA (NDeclStmt d) = case d of 
+    NDecl _ -> return []
+    NDeclAsn s exp -> newReg s >>= loadToReg exp
