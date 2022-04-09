@@ -47,9 +47,10 @@ staticCheck :: Node Prog -> Either String FlowEnv
 staticCheck (NProg xs) = do
     let (err, out) = runIdentity result
     case err of
+        -- The "empty error message = successful" hack..
         Left "" -> Right out
-        Right env -> error $ show out
-        _ -> out <$ err
+        Left msg -> Left msg
+        Right _ -> error $ "Impossible" ++ show out
     where
         result = (runStateT $ runExceptT $ controlFlow True xs) M.empty
 
@@ -75,6 +76,7 @@ controlFlow mustRet (x:xs) = do
             setVarState v VInit
     controlFlow mustRet xs
 
+-- Gets the list of used variable names in the given expression.
 getVarsFromExp :: Node Exp -> [String]
 getVarsFromExp (NIntExp _) = []
 getVarsFromExp (NIdExp s) = [s]

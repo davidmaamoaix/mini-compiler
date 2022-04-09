@@ -46,7 +46,7 @@ allocReg = gets (^. countLens) <* (countLens += 1)
 newReg :: String -> State Env Int
 newReg name = do
     reg <- allocReg
-    -- Set the corresponding register ID to a newly allocated one.
+    -- Sets the corresponding register ID to a newly allocated one.
     varReg name <?= reg
 
 move :: Value -> RegId -> State Env [SSA]
