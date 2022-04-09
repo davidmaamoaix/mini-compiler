@@ -1,10 +1,13 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module SSA where
 
-import Data.Maybe (isNothing)
+import Data.Maybe (isNothing, fromJust)
 import Control.Monad
 import Control.Monad.State.Lazy
+import Control.Lens
 import qualified Data.Map as M
 
 import Parser
@@ -18,7 +21,7 @@ data Value
 data SSA
     = SMove { dest :: RegId, src :: Value }
     | SNeg { dest :: RegId, src :: Value }
-    | SRet { src :: Value }
+    | SRet { src :: Value } 
     | SBinFunc { dest :: RegId, func :: BinOp, op1, op2 :: Value }
     deriving Show
 
@@ -27,48 +30,60 @@ data IR = IR { irVars :: Int, irCode :: [SSA] } deriving Show
 data Env = Env
     { varCount :: Int
     , varRef :: M.Map String Int
-    , code :: [SSA]
     } deriving Show
 
--- TODO: lens this
-appendSSA :: SSA -> State Env ()
-appendSSA s = modify $ \(Env cnt ref ssa) -> Env cnt ref (s : ssa)
+makeLensesFor [("varCount", "countLens"), ("varRef", "refLens")] ''Env
 
--- Gets the register ID corresponding to a variable. Note
--- that each assignment to variable creates a new register.
--- Creats the register if it does not exist.
-getVarReg :: String -> Bool -> State Env Int
-getVarReg s fresh = do
-    refMap <- gets varRef
-    let regId = M.lookup s refMap
-    maybe updateReg (\r -> if fresh then updateReg else return r) regId
-    where
-        updateReg = do
-            count <- allocReg
-            modify $ \(Env cnt ref ssa) -> Env cnt (M.insert s count ref) ssa
-            return count
+-- Lens for the register corresponding to the given variable name.
+varReg :: String -> Lens' Env (Maybe Int)
+varReg name =  refLens . at name
 
+-- State for allocating a register and incrementing the register counter.
 allocReg :: State Env Int
-allocReg = do
-    count <- gets varCount
-    modify $ \(Env _ ref ssa) -> Env (count + 1) ref ssa
-    return count
+allocReg = gets (^. countLens) <* (countLens += 1)
+
+-- State for allocating a new register value to the given variable.
+newReg :: String -> State Env Int
+newReg name = do
+    reg <- allocReg
+    -- Set the corresponding register ID to a newly allocated one.
+    modify (& varReg name ?~ reg)
+    return reg
+
+move :: Value -> RegId -> State Env [SSA]
+move val dest = return [SMove dest val]
+
+-- Code for loading an exp to a register.
+loadToReg :: Node Exp -> RegId -> State Env [SSA]
+loadToReg (NIntExp num) dest = move (VLit num) dest
+loadToReg (NIdExp s) dest = do
+    reg <- gets (^. varReg s)
+    move (VReg $ fromJust reg) dest
+loadToReg (NBinExp a op b) dest = do
+    regA <- allocReg
+    regB <- allocReg
+    loadToReg a regA
+    loadToReg b regB
+    appendSSA $ SBinFunc dest op (VReg regA) (VReg regB)
+loadToReg (NNegExp e) dest = do
+    reg <- allocReg
+    loadToReg e reg
+    appendSSA $ SNeg dest (VReg reg)
 
 -- Converts code to Static Single Assignment form.
 -- TODO: change to target a function in future labs.
 toSSA :: Node Prog -> IR
-toSSA (NProg xs) = IR (varCount env) (reverse . code $ env)
+toSSA (NProg xs) = IR (varCount $ snd result) (concat $ fst result)
     where
-        env = execState convert (Env 0 M.empty [])
-        convert :: State Env ()
-        convert = forM_ xs stmtToSSA
+        result :: ([[SSA]], Env)
+        result = runState (forM xs stmtToSSA) (Env 0 M.empty)
 
-stmtToSSA :: Node Stmt -> State Env ()
-stmtToSSA (NBlockStmt xs) = forM_ xs stmtToSSA
-stmtToSSA (NSimpStmt (NSimp (NIdL l) Asn exp)) = do
+stmtToSSA :: Node Stmt -> State Env [SSA]
+stmtToSSA (NBlockStmt xs) = concat <$> forM xs stmtToSSA
+stmtToSSA (NSimpStmt (NSimp l Asn exp)) = do
     reg <- getVarReg l True
     loadToReg exp reg
-stmtToSSA (NSimpStmt (NSimp (NIdL l) op exp)) = do
+stmtToSSA (NSimpStmt (NSimp l op exp)) = do
     src <- getVarReg l False
     new <- getVarReg l True
     opReg <- allocReg
@@ -89,21 +104,3 @@ stmtToSSA (NDeclStmt (NDecl s)) = return ()
 stmtToSSA (NDeclStmt (NDeclAsn s exp)) = do
     reg <- getVarReg s True
     loadToReg exp reg
-
--- Generates SSA code that loads the evaluated value of
--- an Exp node to a given register.
-loadToReg :: Node Exp -> RegId -> State Env ()
-loadToReg (NIntExp num) dest = appendSSA $ SMove dest (VLit num)
-loadToReg (NIdExp s) dest = do
-    reg <- getVarReg s False
-    appendSSA $ SMove dest (VReg reg)
-loadToReg (NBinExp a op b) dest = do
-    regA <- allocReg
-    regB <- allocReg
-    loadToReg a regA
-    loadToReg b regB
-    appendSSA $ SBinFunc dest op (VReg regA) (VReg regB)
-loadToReg (NNegExp e) dest = do
-    reg <- allocReg
-    loadToReg e reg
-    appendSSA $ SNeg dest (VReg reg)
