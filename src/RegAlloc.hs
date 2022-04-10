@@ -1,7 +1,9 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module RegAlloc where
 
+import GHC.Enum
 import Control.Lens
 import Control.Monad.State.Lazy
 
@@ -12,12 +14,31 @@ import qualified Data.Map as M
 import SSA
 import Liveness
 
+-- Native register names.
+data RegName
+    = RAX | RDI | RSI | RDX
+    | RCX | R8 | R9 | R10 | R11 -- Caller-saved to this point.
+    | RBX | R12 | R13 | R14
+    | R15
+    deriving (Show, Eq, Ord, Enum, Bounded)
+
+-- Represents either a register or a memory location (spilled on stack).
 data AsmReg
-    = RAX | RBX | RCX | RDX
-    | RSI | RDI | RBP | RSP
-    | R08 | R09 | R10 | R11
-    | R12 | R13 | R14 | R15
-    deriving Show
+    = Reg RegName
+    | Mem Int
+    deriving (Show, Eq, Ord)
+
+-- The amount of registers usable for register allocation (excluding
+-- spilling onto stack).
+nativeRegCount :: Int
+nativeRegCount = fromEnum (maxBound :: RegName) + 1
+
+instance Enum AsmReg where
+    fromEnum (Reg r) = fromEnum r
+    fromEnum (Mem i) = nativeRegCount + i
+    toEnum i = if i < nativeRegCount
+        then Reg $ toEnum i
+        else Mem (i - nativeRegCount)
 
 data InterGraph c = IGraph
     { gNodes :: RegId
