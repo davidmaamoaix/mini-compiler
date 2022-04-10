@@ -29,6 +29,7 @@ executable compiler
     Lexer
     Parser
     StaticCheck
+    Liveness
     RegAlloc
     Compiler
     SSA
@@ -52,6 +53,7 @@ test-suite mini-compiler-test
     Lexer
     Parser
     StaticCheck
+    Liveness
     RegAlloc
     Compiler
     SSA
