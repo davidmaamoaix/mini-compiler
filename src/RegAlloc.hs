@@ -33,25 +33,15 @@ data AsmReg
 nativeRegCount :: Int
 nativeRegCount = fromEnum (maxBound :: RegName) + 1
 
-instance Enum AsmReg where
-    fromEnum (Reg r) = fromEnum r
-    fromEnum (Mem i) = nativeRegCount + i
-    toEnum i = if i < nativeRegCount
-        then Reg $ toEnum i
-        else Mem (i - nativeRegCount)
+-- Must have a way to get the lowest unused register.
+class Ord c => LowBound c where
+    lowest :: S.Set c -> c
 
 data InterGraph c = IGraph
     { gNodes :: RegId
     , gEdges :: M.Map RegId (S.Set RegId)
     , gColor :: M.Map RegId c
     }
-
--- Must have a way to get the lowest unused register.
-class Ord c => LowBound c where
-    lowest :: S.Set c -> c
-
-instance LowBound Int where
-    lowest s = foldr (\a b -> if S.member a s then b else a) (-1) [0..]
 
 data ColorState = CState
     { ord :: [RegId]
@@ -61,6 +51,22 @@ data ColorState = CState
 
 instance Functor InterGraph where
     fmap f (IGraph n e c) = IGraph n e (f <$> c)
+
+instance Enum AsmReg where
+    fromEnum (Reg r) = fromEnum r
+    fromEnum (Mem i) = nativeRegCount + i
+    toEnum i = if i < nativeRegCount
+        then Reg $ toEnum i
+        else Mem (i - nativeRegCount)
+
+instance LowBound AsmReg where
+    lowest = flip lowestNotSeen 0
+
+-- Gets the lowest enum value that is not present in the given set.
+lowestNotSeen :: (Enum a, Ord a) => S.Set a -> Int -> a
+lowestNotSeen s i
+    | S.member (toEnum i) s = lowestNotSeen s (i + 1)
+    | otherwise = toEnum i
 
 greedyColor :: LowBound c => InterGraph c -> InterGraph c
 greedyColor g = execState gState g

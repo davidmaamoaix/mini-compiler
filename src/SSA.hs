@@ -83,7 +83,7 @@ binOpCode name exp func = do
     new <- newReg name
     opReg <- allocReg
     code <- loadToReg exp opReg
-    return [SBinFunc new func (VReg $ fromJust src) (VReg opReg)]
+    return $ code ++ [SBinFunc new func (VReg $ fromJust src) (VReg opReg)]
 
 -- State for converting a statement into SSA form.
 stmtToSSA :: Node Stmt -> State Env [SSA]

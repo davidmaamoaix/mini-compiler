@@ -1,3 +1,5 @@
+{-# LANGUAGE GADTs #-}
+
 module Liveness where
 
 import Control.Lens
@@ -12,6 +14,11 @@ data LiveInfo = LiveInfo
     , lLive :: [S.Set RegId]
     } deriving Show
 
+-- Inserts the register into the set at the given index of the
+-- liveness state.
+insertLive :: Int -> RegId -> Endo [S.Set RegId]
+insertLive index reg = Endo (& ix index %~ S.insert reg)
+
 -- Performs variable-oriented liveness analysis on the given SSA.
 liveness :: [SSA] -> LiveInfo
 liveness xs = LiveInfo def live
@@ -23,14 +30,18 @@ liveness xs = LiveInfo def live
 -- Note that the given code must be in reversed form.
 backtrack :: [SSA] -> Endo [S.Set RegId]
 backtrack [] = mempty
-backtrack (x:xs) = backtrack xs <> mconcat (trackVar xs <$> allLive)
+backtrack l@(x:xs) = backtrack xs <> mconcat (startTrack <$> allLive)
     where
+        startTrack r = trackVar xs r <> insertLive (length xs) r
         allLive = S.toList (allUsed x)
 
 -- Provided with the variable to track, go back through all previous
 -- lines and update the liveness state accordingly.
 trackVar :: [SSA] -> RegId -> Endo [S.Set RegId]
-trackVar code var = undefined
+trackVar [] var = mempty
+trackVar (x:xs) var
+    | getDef x == Just var = mempty
+    | otherwise = trackVar xs var <> insertLive (length xs) var
 
 usedInValue :: Value -> S.Set RegId
 usedInValue (VLit _) = S.empty
