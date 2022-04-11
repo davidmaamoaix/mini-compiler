@@ -1,6 +1,7 @@
 module Liveness where
 
 import Control.Lens
+import Data.Monoid
 
 import qualified Data.Set as S
 
@@ -16,17 +17,20 @@ liveness :: [SSA] -> LiveInfo
 liveness xs = LiveInfo def live
     where
         def = getDef <$> xs
-        live = foldr (backtrack xs) (S.empty <$ xs) [0..length xs - 1]
+        live = appEndo (backtrack . reverse $ xs) (S.empty <$ xs)
 
--- Performs variable-oriented backtracking on the given line.
--- Updates the live set list with the backtracking results.
-backtrack :: [SSA] -> Int -> [S.Set RegId] -> [S.Set RegId]
-backtrack code line state = foldr (backtrackVar code line) state allLive
+-- Backtracks all live variables from the last line.
+-- Note that the given code must be in reversed form.
+backtrack :: [SSA] -> Endo [S.Set RegId]
+backtrack [] = mempty
+backtrack (x:xs) = backtrack xs <> mconcat (trackVar xs <$> allLive)
     where
-        allLive = allUsed (code !! line)
+        allLive = S.toList (allUsed x)
 
-backtrackVar :: [SSA] -> Int -> RegId -> [S.Set RegId] -> [S.Set RegId]
-backtrackVar code (-1) reg state = state
+-- Provided with the variable to track, go back through all previous
+-- lines and update the liveness state accordingly.
+trackVar :: [SSA] -> RegId -> Endo [S.Set RegId]
+trackVar code var = undefined
 
 usedInValue :: Value -> S.Set RegId
 usedInValue (VLit _) = S.empty
