@@ -8,6 +8,7 @@ import qualified Data.Map as M
 import qualified Data.Set as S
 
 import SSA
+import Liveness
 import RegAlloc
 import Parser (parseProgram)
 import Text.ParserCombinators.Parsec (sourceColumn)
@@ -31,7 +32,7 @@ compile s = do
     where
         convert ast = do
             let ir = toSSA ast
-            return . show $ ir
+            return . show $ liveness $ irCode ir
             --let interGraph = genInterGraph ir
             --let ordering = simpOrdering interGraph
             --return $ show $ simpOrdering (IGraph 6 (M.fromList [

@@ -11,26 +11,22 @@ data LiveInfo = LiveInfo
     , lLive :: [S.Set RegId]
     } deriving Show
 
-updateLiveInfo k d v (LiveInfo ds ls) = LiveInfo nd (ls & element k %~ S.insert v)
-    where
-        nd = ds & element k .~ d
-
+-- Performs variable-oriented liveness analysis on the given SSA.
 liveness :: [SSA] -> LiveInfo
-liveness xs = iter (LiveInfo (Nothing <$ xs) (S.empty <$ xs)) $ reverse xs
+liveness xs = LiveInfo def live
     where
-        iter :: LiveInfo -> [SSA] -> LiveInfo
-        iter s [] = s
-        iter s ls@(x:xs) = iter (foldr (propagate ls) s (allUsed x)) xs
-        propagate :: [SSA] -> RegId -> LiveInfo -> LiveInfo
-        propagate [] _ l = l
-        propagate (x:xs) r i@(LiveInfo d l) = let (ns, cont) = curr in
-                if cont then propagate xs r ns
-                else ns
-            where
-                curr = let currDef = getDef x in
-                    if Just r == currDef
-                    then (LiveInfo (d & element (length xs) ?~ r) l, False)
-                    else (updateLiveInfo (length xs) currDef r i, True)
+        def = getDef <$> xs
+        live = foldr (backtrack xs) (S.empty <$ xs) [0..length xs - 1]
+
+-- Performs variable-oriented backtracking on the given line.
+-- Updates the live set list with the backtracking results.
+backtrack :: [SSA] -> Int -> [S.Set RegId] -> [S.Set RegId]
+backtrack code line state = foldr (backtrackVar code line) state allLive
+    where
+        allLive = allUsed (code !! line)
+
+backtrackVar :: [SSA] -> Int -> RegId -> [S.Set RegId] -> [S.Set RegId]
+backtrackVar code (-1) reg state = state
 
 usedInValue :: Value -> S.Set RegId
 usedInValue (VLit _) = S.empty
