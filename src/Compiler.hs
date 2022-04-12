@@ -34,8 +34,8 @@ compile s = do
             let ir = toSSA ast
             let live = liveness (irCode ir)
             let interGraph = genInterGraph (irVars ir) live
-            return $ show (gEdges interGraph)
-            --let ordering = simpOrdering interGraph
+            let ordering = simpOrdering interGraph
+            return $ show ordering
             --return $ show $ simpOrdering (IGraph 6 (M.fromList [
             --    (1, S.fromList[2, 3]), (2, S.fromList[1, 3, 4]), (3, S.fromList[1, 2, 5]), (4, S.fromList[2, 3]), (5, S.fromList[3])]) M.empty)
 

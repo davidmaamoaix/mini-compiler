@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module RegAlloc where
@@ -38,10 +39,15 @@ class Ord c => LowBound c where
     lowest :: S.Set c -> c
 
 data ColorState = CState
-    { ord :: [RegId]
-    , weights :: [Int]
-    , verts :: S.Set RegId
+    { cOrd :: [RegId]
+    , cWeights :: [Int]
+    , cVerts :: S.Set RegId
     }
+
+makeLensesFor
+    [ ("cWeights", "weightsLens")
+    , ("cVerts", "vertsLens")
+    ] ''ColorState
 
 instance Enum AsmReg where
     fromEnum (Reg r) = fromEnum r
@@ -60,15 +66,23 @@ lowestNotSeen s i
     | otherwise = toEnum i
 
 simpOrdering :: InterGraph c -> [RegId]
-simpOrdering (IGraph n edges) = reverse $ ord $ foldr iter initState [1..n]
+simpOrdering g@(IGraph n edges) = evalState (simpOrderingState g) initState
     where
-        iter _ s@(CState ord w v) = insertMax (maxVert w v) s
-        insertMax t (CState ord w v) = CState (t:ord) (updateW v w t) (S.delete t v)
-        updateW nodes weights t = foldr (\a w -> w & element a %~ (+ 1)) weights inter
-            where
-                inter = S.toList $ S.intersection nodes connections
-                connections = M.findWithDefault S.empty t edges
-        initState = CState [] initWeights initVerts
-        initWeights = replicate n 0
-        initVerts = S.fromList [0..n-1]
-        maxVert w v = L.maximumBy (\a b -> compare (w !! a) (w !! b)) v
+        initState = CState [] (replicate n 0) (S.fromList [0..n - 1])
+
+simpOrderingState :: InterGraph c -> State ColorState [RegId]
+simpOrderingState (IGraph n edges) = forM [1..n] $ \_ -> do
+    maxV <- maxWeightNode
+    neighbors <- nodeNeighbor edges maxV
+    vertsLens %= S.delete maxV
+    forM_ neighbors $ \neighbor -> do
+        weightsLens . ix neighbor += 1
+    return maxV
+
+maxWeightNode :: State ColorState RegId
+maxWeightNode = do
+    (CState _ w verts) <- get
+    return $ L.maximumBy (\a b -> compare (w !! a) (w !! b)) verts
+
+nodeNeighbor :: InterGraphEdges -> RegId -> State ColorState (S.Set RegId)
+nodeNeighbor edges r = return $ edges ^. at r . non S.empty
