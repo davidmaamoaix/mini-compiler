@@ -82,7 +82,7 @@ listMapSet :: Ord b => ([a] -> [b]) -> S.Set a -> S.Set b
 listMapSet f = S.fromList . f . S.toList
 
 -- Gets all colors used for a given set of variables.
-getSetColors :: LowBound c => M.Map RegId c -> S.Set RegId -> S.Set c
+getSetColors :: Ord c => M.Map RegId c -> S.Set RegId -> S.Set c
 getSetColors m set = listMapSet catMaybes $ S.map (`M.lookup` m) set
 
 -- Computation for coloring a given variable.
