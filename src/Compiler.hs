@@ -31,13 +31,14 @@ compile s = do
         Left msg -> Left $ StaticCheckError msg
     where
         convert ast = do
-            let ir = toSSA ast
-            let live = liveness (irCode ir)
-            let interGraph = genInterGraph (irVars ir) live
-            let ordering = simpOrdering interGraph
-            return $ show ordering
-            --return $ show $ simpOrdering (IGraph 6 (M.fromList [
-            --    (1, S.fromList[2, 3]), (2, S.fromList[1, 3, 4]), (3, S.fromList[1, 2, 5]), (4, S.fromList[2, 3]), (5, S.fromList[3])]) M.empty)
+            -- let ir = toSSA ast
+            -- let live = liveness (irCode ir)
+            -- let inter = genInterGraph (irVars ir) live
+            -- let ordering = simpOrdering inter
+            -- let colors = greedyColoring inter ordering :: M.Map RegId AsmReg
+            let graph = IGraph 6 (M.fromList [(1, S.fromList[2, 3]), (2, S.fromList[1, 3, 4]), (3, S.fromList[1, 2, 5]), (4, S.fromList[2, 3]), (5, S.fromList[3])])
+            let newOrdering = simpOrdering graph
+            return . show $ (greedyColoring graph newOrdering :: M.Map RegId AsmReg)
 
 convertParseError :: ParseError -> CompilerError
 convertParseError pErr = SyntaxError (errPos pErr) (errInfo pErr)

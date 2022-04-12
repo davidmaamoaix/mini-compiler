@@ -68,14 +68,14 @@ getDef (SBinFunc d _ _ _) = Just d
 type InterGraphEdges = M.Map RegId (S.Set RegId)
 
 -- Interference graph.
-data InterGraph c = IGraph
+data InterGraph = IGraph
     { gNodes :: RegId
     , gEdges :: InterGraphEdges
     }
 
 makeLensesFor [("gEdges", "edgesLens")] ''InterGraph
 
-genInterGraph :: Int -> LiveInfo -> InterGraph a
+genInterGraph :: Int -> LiveInfo -> InterGraph
 genInterGraph regCount l = IGraph regCount edges
     where
         edges :: InterGraphEdges

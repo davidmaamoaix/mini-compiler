@@ -5,6 +5,8 @@
 module RegAlloc where
 
 import GHC.Enum
+import Data.Maybe (isJust, catMaybes)
+import Data.Monoid
 import Control.Lens
 import Control.Monad.State.Lazy
 
@@ -14,6 +16,8 @@ import qualified Data.Map as M
 
 import SSA
 import Liveness
+
+import Debug.Trace
 
 -- Native register names.
 data RegName
@@ -38,7 +42,7 @@ nativeRegCount = fromEnum (maxBound :: RegName) + 1
 class Ord c => LowBound c where
     lowest :: S.Set c -> c
 
-data ColorState = CState
+data ColorState c = CState
     { cOrd :: [RegId]
     , cWeights :: [Int]
     , cVerts :: S.Set RegId
@@ -65,24 +69,59 @@ lowestNotSeen s i
     | S.member (toEnum i) s = lowestNotSeen s (i + 1)
     | otherwise = toEnum i
 
-simpOrdering :: InterGraph c -> [RegId]
+-- Greedily assigns color to the nodes with the given ordering.
+greedyColoring :: LowBound c => InterGraph -> [RegId] -> M.Map RegId c
+greedyColoring g xs = appEndo (greedyColoringEndo g xs) M.empty
+
+-- Computation for greedy coloring.
+greedyColoringEndo :: LowBound c => InterGraph -> [RegId] -> Endo (M.Map RegId c)
+greedyColoringEndo g xs = mconcat $ colorVar g <$> xs
+
+-- Maps a set with a list function.
+listMapSet :: Ord b => ([a] -> [b]) -> S.Set a -> S.Set b
+listMapSet f = S.fromList . f . S.toList
+
+-- Gets all colors used for a given set of variables.
+getSetColors :: LowBound c => M.Map RegId c -> S.Set RegId -> S.Set c
+getSetColors m set = listMapSet catMaybes $ S.map (`M.lookup` m) set
+
+-- Computation for coloring a given variable.
+colorVar :: LowBound c => InterGraph -> RegId -> Endo (M.Map RegId c)
+colorVar (IGraph _ edges) var = Endo $ \m -> M.insert var (nextColor m) m
+    where
+        -- Gets the lowest color that is not used in its neighbors.
+        nextColor :: LowBound c => M.Map RegId c -> c
+        nextColor m = lowest (getSetColors m $ edges ^. at var . non S.empty)
+
+-- Generates the simplicial elimination ordering for a given
+-- interference graph.
+simpOrdering :: InterGraph -> [RegId]
 simpOrdering g@(IGraph n edges) = evalState (simpOrderingState g) initState
     where
         initState = CState [] (replicate n 0) (S.fromList [0..n - 1])
 
-simpOrderingState :: InterGraph c -> State ColorState [RegId]
+-- Computation for obtaining the simplicial elimination ordering.
+simpOrderingState :: InterGraph -> State (ColorState c) [RegId]
 simpOrderingState (IGraph n edges) = forM [1..n] $ \_ -> do
+    -- Gets the node with maximum weight.
     maxV <- maxWeightNode
+    -- Gets all interfering variables with the current node.
     neighbors <- nodeNeighbor edges maxV
+    -- Removes the current variable from the unvisited set.
     vertsLens %= S.delete maxV
+    -- Increments the weight of all interfering variables.
     forM_ neighbors $ \neighbor -> do
         weightsLens . ix neighbor += 1
     return maxV
 
-maxWeightNode :: State ColorState RegId
+-- State for getting the maximum weighted node to be assigned as
+-- the next node in the elimination order.
+maxWeightNode :: State (ColorState c) RegId
 maxWeightNode = do
-    (CState _ w verts) <- get
+    w <- gets cWeights
+    verts <- gets cVerts
     return $ L.maximumBy (\a b -> compare (w !! a) (w !! b)) verts
 
-nodeNeighbor :: InterGraphEdges -> RegId -> State ColorState (S.Set RegId)
+-- State for getting all interfering variables.
+nodeNeighbor :: InterGraphEdges -> RegId -> State (ColorState c) (S.Set RegId)
 nodeNeighbor edges r = return $ edges ^. at r . non S.empty
