@@ -5,6 +5,7 @@ module Liveness where
 
 import Debug.Trace
 
+import Data.Maybe
 import Data.Monoid
 import Control.Lens
 import Control.Monad (guard)
@@ -75,23 +76,45 @@ data InterGraph c = IGraph
 makeLensesFor [("gEdges", "edgesLens")] ''InterGraph
 
 genInterGraph :: Int -> LiveInfo -> InterGraph a
-genInterGraph regCount (LiveInfo def live) = IGraph regCount edges
+genInterGraph regCount l = IGraph regCount edges
     where
-        edges = appEndo (mconcat $ genInterFromLine <$> live) M.empty
+        edges :: InterGraphEdges
+        edges = appEndo (interGraphComp l) M.empty
 
--- Gets the cartesian product of the set with itself with no pairs
--- containing the same element twice.
-pairsOfSet :: Eq a => S.Set a -> [(a, a)]
-pairsOfSet s = do
-    a <- S.toList s
-    b <- S.toList s
+-- Computation that generates the interference graph based on
+-- the given liveness information.
+interGraphComp :: LiveInfo -> Endo InterGraphEdges
+interGraphComp l = asnLiveInter l <> mconcat (genInterFromLine <$> lLive l)
+
+-- Gets the cartesian product of two sets with no pairs containing
+-- the same element twice.
+cartPairs :: Eq a => S.Set a -> S.Set a -> [(a, a)]
+cartPairs sa sb = do
+    a <- S.toList sa
+    b <- S.toList sb
     guard $ a /= b
     return (a, b)
+
+-- Updates the interference graph with a key-value pair (the symmetric
+-- inverse is not added though).
+updatePair :: (RegId, RegId) -> Endo InterGraphEdges
+updatePair (a, b) = Endo (& at a . non S.empty %~ S.insert b)
+
+updateAllPairs :: [(RegId, RegId)] -> Endo InterGraphEdges
+updateAllPairs = mconcat . (updatePair <$>)
 
 -- Computation that populates an interference graph with live
 -- variables in each statement.
 genInterFromLine :: S.Set RegId -> Endo InterGraphEdges
-genInterFromLine s = mconcat $ updatePair <$> pairsOfSet s
+genInterFromLine s = updateAllPairs $ cartPairs s s
+
+-- The variable assigned to at L interferes with all live variables
+-- at L + 1.
+asnLiveInter :: LiveInfo -> Endo InterGraphEdges
+asnLiveInter (LiveInfo def live) = updateAllPairs $ concat (genPairs <$> zipped)
     where
-        updatePair :: (RegId, RegId) -> Endo InterGraphEdges
-        updatePair (a, b) = Endo (& at a . non S.empty %~ S.insert b)
+        -- Zips definition at L with live variables at L + 1.
+        zipped :: [(RegId, S.Set RegId)]
+        zipped = [(fromJust a, b) | (a, b) <- zip def (tail live), isJust a]
+        genPairs :: Eq a => (a, S.Set a) -> [(a, a)]
+        genPairs (a, s) = cartPairs (S.singleton a) s ++ cartPairs s (S.singleton a)
