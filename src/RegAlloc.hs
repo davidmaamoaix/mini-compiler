@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -42,11 +43,16 @@ nativeRegCount = fromEnum (maxBound :: RegName) + 1
 class Ord c => LowBound c where
     lowest :: S.Set c -> c
 
+-- ColorState is the intermediate state of a register coloring algorithm
+-- and includes all necessary components such as the interference graph, etc.
+-- Note that some of the components are inter-dependent during the coloring
+-- phrase (e.g. color of variables and the elimination ordering, due to pre-
+-- coloring).
 data ColorState c = CState
     { cOrd :: [RegId]
     , cWeights :: [Int]
     , cVerts :: S.Set RegId
-    -- , cInter :: InterGraph
+    , cInter :: InterGraph
     -- , cColor :: M.Map RegId c
     }
 
@@ -54,6 +60,7 @@ makeLensesFor
     [ ("cOrd", "ordLens")
     , ("cWeights", "weightsLens")
     , ("cVerts", "vertsLens")
+    , ("cInter", "interLens")
     ] ''ColorState
 
 instance Enum AsmReg where
@@ -72,12 +79,17 @@ lowestNotSeen s i
     | S.member (toEnum i) s = lowestNotSeen s (i + 1)
     | otherwise = toEnum i
 
+-- Lens for the set of interfering variables of a ColorState given
+-- the target variable.
+interRegsLens :: RegId -> Lens' (ColorState c) (S.Set RegId)
+interRegsLens reg = interLens . edgesLens . at reg . non S.empty
+
 -- Computation for precoloring a register to a color.
 precolor :: RegId -> c -> Endo (ColorState c)
 precolor reg color = Endo (& increWeights . removeVert)
     where
         increWeights :: ColorState c -> ColorState c
-        increWeights = undefined
+        increWeights s = undefined
         removeVert :: ColorState c -> ColorState c
         removeVert = vertsLens %~ S.delete reg
 
@@ -110,7 +122,7 @@ colorVar (IGraph _ edges) var = Endo $ \m -> M.insert var (nextColor m) m
 simpOrdering :: InterGraph -> [RegId]
 simpOrdering g@(IGraph n edges) = evalState (simpOrderingState g) initState
     where
-        initState = CState [] (replicate n 0) (S.fromList [0..n - 1])
+        initState = CState [] (replicate n 0) (S.fromList [0..n - 1]) g
 
 -- Computation for obtaining the simplicial elimination ordering.
 simpOrderingState :: InterGraph -> State (ColorState c) [RegId]
