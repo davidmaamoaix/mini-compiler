@@ -46,10 +46,13 @@ data ColorState c = CState
     { cOrd :: [RegId]
     , cWeights :: [Int]
     , cVerts :: S.Set RegId
+    -- , cInter :: InterGraph
+    -- , cColor :: M.Map RegId c
     }
 
 makeLensesFor
-    [ ("cWeights", "weightsLens")
+    [ ("cOrd", "ordLens")
+    , ("cWeights", "weightsLens")
     , ("cVerts", "vertsLens")
     ] ''ColorState
 
@@ -68,6 +71,15 @@ lowestNotSeen :: (Enum a, Ord a) => S.Set a -> Int -> a
 lowestNotSeen s i
     | S.member (toEnum i) s = lowestNotSeen s (i + 1)
     | otherwise = toEnum i
+
+-- Computation for precoloring a register to a color.
+precolor :: RegId -> c -> Endo (ColorState c)
+precolor reg color = Endo (& increWeights . removeVert)
+    where
+        increWeights :: ColorState c -> ColorState c
+        increWeights = undefined
+        removeVert :: ColorState c -> ColorState c
+        removeVert = vertsLens %~ S.delete reg
 
 -- Greedily assigns color to the nodes with the given ordering.
 greedyColoring :: LowBound c => InterGraph -> [RegId] -> M.Map RegId c
