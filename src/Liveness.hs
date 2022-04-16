@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Liveness where
@@ -74,6 +75,10 @@ data InterGraph = IGraph
     }
 
 makeLensesFor [("gEdges", "edgesLens")] ''InterGraph
+
+-- Lens for the set of interfering variables of a given variable.
+interSetLens :: RegId -> Lens' InterGraph (S.Set RegId)
+interSetLens reg = edgesLens . at reg . non S.empty
 
 genInterGraph :: Int -> LiveInfo -> InterGraph
 genInterGraph regCount l = IGraph regCount edges

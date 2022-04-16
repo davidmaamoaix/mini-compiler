@@ -84,13 +84,38 @@ lowestNotSeen s i
     | otherwise = toEnum i
 
 -- Colors the registers in an IR (respecting the precolors).
-colorRegisters :: Precolor c => IR c -> M.Map RegId c
-colorRegisters (IR n code precolor) = undefined
+colorRegisters :: LowBound c => IR c -> M.Map RegId c
+colorRegisters ir = evalState colorFromInitial (initColorState ir)
+
+-- Computation for processing an initial state and returns the final
+-- variable color assignment.
+colorFromInitial :: LowBound c => State (ColorState c) (M.Map RegId c)
+colorFromInitial = do
+    -- Populates simplicial elimination ordering.
+    simpOrdering
+    -- Colors the remaining uncolored nodes.
+    greedyColoringState
+    -- Returns final coloring.
+    gets cColor
+
+initColorState :: IR c -> ColorState c
+initColorState (IR n code precolor) = CState [] weights unColored inter precolor
+    where
+        weights :: [Int]
+        weights = [weight x | x <- [0..n-1]]
+        weight :: RegId -> Int
+        weight reg = S.size $ (inter ^. edgesLens . at reg . non S.empty) `S.intersection` precolored
+        unColored :: S.Set RegId
+        unColored = S.fromList [0..n-1] `S.difference` precolored
+        precolored :: S.Set RegId
+        precolored = M.keysSet precolor
+        inter :: InterGraph
+        inter = genInterGraph n $ liveness code
 
 -- Lens for the set of interfering variables of a ColorState given
 -- the target variable.
 interRegsLens :: RegId -> Lens' (ColorState c) (S.Set RegId)
-interRegsLens reg = interLens . edgesLens . at reg . non S.empty
+interRegsLens reg = interLens . interSetLens reg
 
 -- Computation for precoloring a register to a color.
 precolor :: RegId -> c -> State (ColorState c) ()
