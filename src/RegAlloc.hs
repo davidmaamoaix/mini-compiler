@@ -101,16 +101,21 @@ colorFromInitial = do
 initColorState :: IR c -> ColorState c
 initColorState (IR n code precolor) = CState [] weights unColored inter precolor
     where
-        weights :: [Int]
-        weights = [weight x | x <- [0..n-1]]
-        weight :: RegId -> Int
-        weight reg = S.size $ (inter ^. edgesLens . at reg . non S.empty) `S.intersection` precolored
-        unColored :: S.Set RegId
-        unColored = S.fromList [0..n-1] `S.difference` precolored
-        precolored :: S.Set RegId
-        precolored = M.keysSet precolor
+        -- Initial interference graph.
         inter :: InterGraph
         inter = genInterGraph n $ liveness code
+        -- Set of precolored nodes.
+        precolored :: S.Set RegId
+        precolored = M.keysSet precolor
+        -- Set of uncolored nodes.
+        unColored :: S.Set RegId
+        unColored = S.fromList [0..n-1] `S.difference` precolored
+        -- Initial weight of a node = neighboring nodes that are colored.
+        weights :: [Int]
+        weights = [weight x | x <- [0..n-1]]
+        -- Gets the initial weight of a single variable.
+        weight :: RegId -> Int
+        weight reg = S.size $ (inter ^. interSetLens reg) `S.intersection` precolored
 
 -- Lens for the set of interfering variables of a ColorState given
 -- the target variable.
