@@ -25,7 +25,11 @@ data SSA
     | SBinFunc { dest :: RegId, func :: BinOp, op1, op2 :: Value }
     deriving Show
 
-data IR = IR { irVars :: Int, irCode :: [SSA] } deriving Show
+data IR c = IR
+    { irVars :: Int
+    , irCode :: [SSA]
+    , irPrecolor :: M.Map RegId c
+    } deriving Show
 
 data Env c = Env
     { varCount :: Int
@@ -84,11 +88,11 @@ loadToReg (NNegExp e) dest = do
 
 -- Converts code to Static Single Assignment form.
 -- TODO: change to target a function in future labs.
-toSSA :: Node Prog -> IR
-toSSA (NProg xs) = IR (varCount $ snd result) (concat $ fst result)
+toSSA :: Precolor c => Node Prog -> IR c
+toSSA (NProg xs) = IR (varCount env) (concat code) (varColor env)
     where
-        result :: ([[SSA]], Env c)
-        result = runState (forM xs stmtToSSA) (Env 0 M.empty M.empty)
+        -- result :: Precolor c => ([[SSA]], Env c)
+        (code, env) = runState (forM xs stmtToSSA) (Env 0 M.empty M.empty)
 
 binOpCode :: String -> Node Exp -> BinOp -> State (Env c) [SSA]
 binOpCode name exp func = do
@@ -98,8 +102,16 @@ binOpCode name exp func = do
     code <- loadToReg exp opReg
     return $ code ++ [SBinFunc new func (VReg $ fromJust src) (VReg opReg)]
 
+-- State for precoloring a register. Note that the colored register should
+-- have limited liveness range to eliminate graph interference (e.g. should
+-- be a temporary that is only assigned before the instruction with machine-
+-- specific register and cannot be live afterwards).
+colorReg :: RegId -> Maybe c -> State (Env c) ()
+colorReg _ Nothing = return ()
+colorReg reg (Just color) = colorLens %= M.insert reg color
+
 -- State for converting a statement into SSA form.
-stmtToSSA :: Node Stmt -> State (Env c) [SSA]
+stmtToSSA :: Precolor c => Node Stmt -> State (Env c) [SSA]
 stmtToSSA (NBlockStmt xs) = concat <$> forM xs stmtToSSA
 stmtToSSA (NSimpStmt (NSimp (NIdL l) op exp)) = let bin = binOpCode l exp in
     case op of
@@ -111,6 +123,7 @@ stmtToSSA (NSimpStmt (NSimp (NIdL l) op exp)) = let bin = binOpCode l exp in
         Asn -> newReg l >>= loadToReg exp
 stmtToSSA (NRetStmt exp) = do
     reg <- allocReg
+    colorReg reg retReg
     code <- loadToReg exp reg
     return $ code ++ [SRet (VReg reg)]
 stmtToSSA (NDeclStmt d) = case d of 

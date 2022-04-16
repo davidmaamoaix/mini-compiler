@@ -31,7 +31,7 @@ compile s = do
         Left msg -> Left $ StaticCheckError msg
     where
         convert ast = do
-            let ir = toSSA ast
+            let ir = toSSA ast :: IR AsmReg
             let live = liveness (irCode ir)
             let inter = genInterGraph (irVars ir) live
             let ordering = simpOrdering inter

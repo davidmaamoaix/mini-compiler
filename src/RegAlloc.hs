@@ -73,6 +73,9 @@ instance Enum AsmReg where
 instance LowBound AsmReg where
     lowest = flip lowestNotSeen 0
 
+instance Precolor AsmReg where
+    retReg = Just $ Reg RAX
+
 -- Gets the lowest enum value that is not present in the given set.
 lowestNotSeen :: (Enum a, Ord a) => S.Set a -> Int -> a
 lowestNotSeen s i
