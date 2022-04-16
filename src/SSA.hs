@@ -40,7 +40,7 @@ data Env c = Env
 makeLensesFor
     [ ("varCount", "countLens")
     , ("varRef", "refLens")
-    , ("varColor", "colorLens")
+    , ("varColor", "precolorLens")
     ] ''Env
 
 -- An register type must provide some target language dependent
@@ -108,7 +108,7 @@ binOpCode name exp func = do
 -- specific register and cannot be live afterwards).
 colorReg :: RegId -> Maybe c -> State (Env c) ()
 colorReg _ Nothing = return ()
-colorReg reg (Just color) = colorLens %= M.insert reg color
+colorReg reg (Just color) = precolorLens %= M.insert reg color
 
 -- State for converting a statement into SSA form.
 stmtToSSA :: Precolor c => Node Stmt -> State (Env c) [SSA]

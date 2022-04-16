@@ -51,16 +51,17 @@ class Ord c => LowBound c where
 data ColorState c = CState
     { cOrd :: [RegId]
     , cWeights :: [Int]
-    , cVerts :: S.Set RegId
+    , cNoColor :: S.Set RegId
     , cInter :: InterGraph
-    -- , cColor :: M.Map RegId c
+    , cColor :: M.Map RegId c
     }
 
 makeLensesFor
     [ ("cOrd", "ordLens")
     , ("cWeights", "weightsLens")
-    , ("cVerts", "vertsLens")
+    , ("cNoColor", "noColorLens")
     , ("cInter", "interLens")
+    , ("cColor", "colorLens")
     ] ''ColorState
 
 instance Enum AsmReg where
@@ -92,75 +93,77 @@ interRegsLens :: RegId -> Lens' (ColorState c) (S.Set RegId)
 interRegsLens reg = interLens . edgesLens . at reg . non S.empty
 
 -- Computation for precoloring a register to a color.
-precolor :: RegId -> c -> Endo (ColorState c)
-precolor reg color = Endo (& increWeights . removeVert)
-    where
-        increWeights :: ColorState c -> ColorState c
-        increWeights s = s & weightsLens %~ increSetMap (s ^. interRegsLens reg)
-        removeVert :: ColorState c -> ColorState c
-        removeVert = vertsLens %~ S.delete reg
+precolor :: RegId -> c -> State (ColorState c) ()
+precolor reg color = do
+    -- Removes the register from the uncolored set.
+    noColorLens %= S.delete reg
+    -- Gets neighbors.
+    neighbors <- gets (^. interRegsLens reg)
+    -- Increments all neighboring weights.
+    forM_ neighbors $ \s -> do
+        weightsLens . ix s += 1
 
--- Increments all values in the weights map that corresponds to a
--- set of registers.
-increSetMap :: S.Set Int -> [Int] -> [Int]
-increSetMap s weights = incre <$> zip [0..] weights
-    where
-        incre :: (Int, Int) -> Int
-        incre (idx, w) = if S.member w s then idx + 1 else idx
+-- State for greedy coloring the rest of uncolored odes.
+greedyColoringState :: LowBound c => State (ColorState c) ()
+greedyColoringState = do
+    -- Gets the elimination ordering.
+    ordering <- gets cOrd
+    -- Since all nodes in the ordering are uncolored, just map
+    -- through the states of coloring each of them.
+    forM_ ordering $ \reg -> do
+        -- Greedily assigns color.
+        newColor <- getGreedyColor reg
+        colorLens . at reg ?= newColor
 
--- Greedily assigns color to the nodes with the given ordering.
-greedyColoring :: LowBound c => InterGraph -> [RegId] -> M.Map RegId c
-greedyColoring g xs = appEndo (greedyColoringEndo g xs) M.empty
-
--- Computation for greedy coloring.
-greedyColoringEndo :: LowBound c => InterGraph -> [RegId] -> Endo (M.Map RegId c)
-greedyColoringEndo g xs = mconcat $ colorVar g <$> xs
 
 -- Maps a set with a list function.
 listMapSet :: Ord b => ([a] -> [b]) -> S.Set a -> S.Set b
 listMapSet f = S.fromList . f . S.toList
 
--- Gets all colors used for a given set of variables.
-getSetColors :: Ord c => M.Map RegId c -> S.Set RegId -> S.Set c
-getSetColors m set = listMapSet catMaybes $ S.map (`M.lookup` m) set
+-- Gets all colors used for a given variable's neighborhood.
+getNeighborhoodColors :: Ord c => RegId -> State (ColorState c) (S.Set c)
+getNeighborhoodColors reg = do
+    -- Gets all interfering variables.
+    conflicts <- gets (^. interRegsLens reg)
+    -- Gets all current colors.
+    colors <- gets cColor
+    -- Maps the whole conflict set across the color map.
+    return $ listMapSet catMaybes $ S.map (`M.lookup` colors) conflicts
+    
+-- listMapSet catMaybes $ S.map (`M.lookup` m) set
 
--- Computation for coloring a given variable.
-colorVar :: LowBound c => InterGraph -> RegId -> Endo (M.Map RegId c)
-colorVar (IGraph _ edges) var = Endo $ \m -> M.insert var (nextColor m) m
-    where
-        -- Gets the lowest color that is not used in its neighbors.
-        nextColor :: LowBound c => M.Map RegId c -> c
-        nextColor m = lowest (getSetColors m $ edges ^. at var . non S.empty)
+-- Computation for getting the lowest unused color in the neighborhood
+-- formed by the given variable.
+getGreedyColor :: LowBound c => RegId -> State (ColorState c) c
+getGreedyColor reg = do
+    used <- getNeighborhoodColors reg
+    return $ lowest used
 
--- Generates the simplicial elimination ordering for a given
--- interference graph.
-simpOrdering :: InterGraph -> [RegId]
-simpOrdering g@(IGraph n edges) = evalState (simpOrderingState g) initState
-    where
-        initState = CState [] (replicate n 0) (S.fromList [0..n - 1]) g
+-- Populates the simplicial elimination ordering field from the remaining
+-- uncolored variables. Does NOT contain precolored nodes.
+simpOrdering :: State (ColorState c) ()
+simpOrdering = genSimpOrdering >>= (ordLens .=)
 
 -- Computation for obtaining the simplicial elimination ordering.
-simpOrderingState :: InterGraph -> State (ColorState c) [RegId]
-simpOrderingState (IGraph n edges) = forM [1..n] $ \_ -> do
-    -- Gets the node with maximum weight.
-    maxV <- maxWeightNode
-    -- Gets all interfering variables with the current node.
-    neighbors <- nodeNeighbor edges maxV
-    -- Removes the current variable from the unvisited set.
-    vertsLens %= S.delete maxV
-    -- Increments the weight of all interfering variables.
-    forM_ neighbors $ \neighbor -> do
-        weightsLens . ix neighbor += 1
-    return maxV
+genSimpOrdering :: State (ColorState c) [RegId]
+genSimpOrdering = do
+    unvisited <- gets cNoColor
+    forM (S.toList unvisited) $ \_ -> do
+        -- Gets the node with maximum weight.
+        maxV <- maxWeightNode
+        -- Gets all interfering variables with the current node.
+        neighbors <- gets (^. interRegsLens maxV)
+        -- Removes the current variable from the uncolored set.
+        noColorLens %= S.delete maxV
+        -- Increments the weight of all interfering variables.
+        forM_ neighbors $ \neighbor -> do
+            weightsLens . ix neighbor += 1
+        return maxV
 
 -- State for getting the maximum weighted node to be assigned as
 -- the next node in the elimination order.
 maxWeightNode :: State (ColorState c) RegId
 maxWeightNode = do
     w <- gets cWeights
-    verts <- gets cVerts
+    verts <- gets cNoColor
     return $ L.maximumBy (\a b -> compare (w !! a) (w !! b)) verts
-
--- State for getting all interfering variables.
-nodeNeighbor :: InterGraphEdges -> RegId -> State (ColorState c) (S.Set RegId)
-nodeNeighbor edges r = return $ edges ^. at r . non S.empty

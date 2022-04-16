@@ -32,14 +32,11 @@ compile s = do
     where
         convert ast = do
             let ir = toSSA ast :: IR AsmReg
-            let live = liveness (irCode ir)
-            let inter = genInterGraph (irVars ir) live
-            let ordering = simpOrdering inter
-            let colors = greedyColoring inter ordering :: M.Map RegId AsmReg
+            let coloring = colorRegisters ir
             -- let graph = IGraph 6 (M.fromList [(1, S.fromList[2, 3]), (2, S.fromList[1, 3, 4]), (3, S.fromList[1, 2, 5]), (4, S.fromList[2, 3]), (5, S.fromList[3])])
             -- let newOrdering = simpOrdering graph
             -- return . show $ (greedyColoring graph newOrdering :: M.Map RegId AsmReg)
-            return . show $ colors
+            return . show $ coloring
 
 convertParseError :: ParseError -> CompilerError
 convertParseError pErr = SyntaxError (errPos pErr) (errInfo pErr)
