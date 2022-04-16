@@ -27,33 +27,46 @@ data SSA
 
 data IR = IR { irVars :: Int, irCode :: [SSA] } deriving Show
 
-data Env = Env
+data Env c = Env
     { varCount :: Int
     , varRef :: M.Map String Int
+    , varColor :: M.Map Int c -- precolors certain IR registers
     } deriving Show
 
-makeLensesFor [("varCount", "countLens"), ("varRef", "refLens")] ''Env
+makeLensesFor
+    [ ("varCount", "countLens")
+    , ("varRef", "refLens")
+    , ("varColor", "colorLens")
+    ] ''Env
+
+-- An register type must provide some target language dependent
+-- register info, in this case, the fixed colors that some operations
+-- use, e.g. %EAX for return value in x86-64. If the target language
+-- does not specify a fixed register for an operation, simply assign
+-- 'Nothing' to it.
+class Precolor c where
+    retReg :: Maybe c
 
 -- Lens for the register corresponding to the given variable name.
-varReg :: String -> Lens' Env (Maybe Int)
+varReg :: String -> Lens' (Env c) (Maybe Int)
 varReg name =  refLens . at name
 
 -- State for allocating a register and incrementing the register counter.
-allocReg :: State Env Int
+allocReg :: State (Env c) Int
 allocReg = gets (^. countLens) <* (countLens += 1)
 
 -- State for allocating a new register value to the given variable.
-newReg :: String -> State Env Int
+newReg :: String -> State (Env c) Int
 newReg name = do
     reg <- allocReg
     -- Sets the corresponding register ID to a newly allocated one.
     varReg name <?= reg
 
-move :: Value -> RegId -> State Env [SSA]
+move :: Value -> RegId -> State (Env c) [SSA]
 move val dest = return [SMove dest val]
 
 -- State for generating code for loading an exp to a register.
-loadToReg :: Node Exp -> RegId -> State Env [SSA]
+loadToReg :: Node Exp -> RegId -> State (Env c) [SSA]
 loadToReg (NIntExp num) dest = move (VLit num) dest
 loadToReg (NIdExp s) dest = do
     reg <- gets (^. varReg s)
@@ -74,10 +87,10 @@ loadToReg (NNegExp e) dest = do
 toSSA :: Node Prog -> IR
 toSSA (NProg xs) = IR (varCount $ snd result) (concat $ fst result)
     where
-        result :: ([[SSA]], Env)
-        result = runState (forM xs stmtToSSA) (Env 0 M.empty)
+        result :: ([[SSA]], Env c)
+        result = runState (forM xs stmtToSSA) (Env 0 M.empty M.empty)
 
-binOpCode :: String -> Node Exp -> BinOp -> State Env [SSA]
+binOpCode :: String -> Node Exp -> BinOp -> State (Env c) [SSA]
 binOpCode name exp func = do
     src <- use $ varReg name
     new <- newReg name
@@ -86,7 +99,7 @@ binOpCode name exp func = do
     return $ code ++ [SBinFunc new func (VReg $ fromJust src) (VReg opReg)]
 
 -- State for converting a statement into SSA form.
-stmtToSSA :: Node Stmt -> State Env [SSA]
+stmtToSSA :: Node Stmt -> State (Env c) [SSA]
 stmtToSSA (NBlockStmt xs) = concat <$> forM xs stmtToSSA
 stmtToSSA (NSimpStmt (NSimp (NIdL l) op exp)) = let bin = binOpCode l exp in
     case op of
