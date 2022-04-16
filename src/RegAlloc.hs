@@ -82,6 +82,10 @@ lowestNotSeen s i
     | S.member (toEnum i) s = lowestNotSeen s (i + 1)
     | otherwise = toEnum i
 
+-- Colors the registers in an IR (respecting the precolors).
+colorRegisters :: Precolor c => IR c -> M.Map RegId c
+colorRegisters (IR n code precolor) = undefined
+
 -- Lens for the set of interfering variables of a ColorState given
 -- the target variable.
 interRegsLens :: RegId -> Lens' (ColorState c) (S.Set RegId)
@@ -92,9 +96,17 @@ precolor :: RegId -> c -> Endo (ColorState c)
 precolor reg color = Endo (& increWeights . removeVert)
     where
         increWeights :: ColorState c -> ColorState c
-        increWeights s = undefined
+        increWeights s = s & weightsLens %~ increSetMap (s ^. interRegsLens reg)
         removeVert :: ColorState c -> ColorState c
         removeVert = vertsLens %~ S.delete reg
+
+-- Increments all values in the weights map that corresponds to a
+-- set of registers.
+increSetMap :: S.Set Int -> [Int] -> [Int]
+increSetMap s weights = incre <$> zip [0..] weights
+    where
+        incre :: (Int, Int) -> Int
+        incre (idx, w) = if S.member w s then idx + 1 else idx
 
 -- Greedily assigns color to the nodes with the given ordering.
 greedyColoring :: LowBound c => InterGraph -> [RegId] -> M.Map RegId c
