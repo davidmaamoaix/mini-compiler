@@ -145,7 +145,6 @@ greedyColoringState = do
         newColor <- getGreedyColor reg
         colorLens . at reg ?= newColor
 
-
 -- Maps a set with a list function.
 listMapSet :: Ord b => ([a] -> [b]) -> S.Set a -> S.Set b
 listMapSet f = S.fromList . f . S.toList
