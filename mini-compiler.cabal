@@ -31,6 +31,7 @@ executable compiler
     StaticCheck
     Liveness
     RegAlloc
+    CodeGen
     Compiler
     SSA
   hs-source-dirs:
@@ -55,6 +56,7 @@ test-suite mini-compiler-test
     StaticCheck
     Liveness
     RegAlloc
+    CodeGen
     Compiler
     SSA
     TestData

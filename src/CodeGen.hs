@@ -18,6 +18,25 @@ data CodeGenState = CGenState
 codeGen :: [SSA] -> M.Map RegId AsmReg -> [String]
 codeGen code colors = evalState codeGenComp (CGenState code colors)
 
+-- Cuz looks are important YAY!
+tab :: String -> String
+tab = ("    " ++)
+
 -- State computation for code emitting.
 codeGenComp :: State CodeGenState [String]
-codeGenComp = undefined
+codeGenComp = do
+    let header = ".text"
+        mainHeader = "main:"
+    start <- asmEntry "main"
+    return $ (header : start) ++ (mainHeader : [])
+
+-- Generates code for setting up the entry point to the given label name.
+asmEntry :: String -> State CodeGenState [String]
+asmEntry entry = return
+    [ ".globl _start"
+    , "_start:"
+    , tab "call " ++ entry
+    , tab "movl %eax, %edi"
+    , tab "movl $60, %eax"
+    , tab "syscall"
+    ]

@@ -1,5 +1,6 @@
 module Compiler where
 
+import Data.List (intercalate)
 import Text.Parsec.Pos
 import Text.Parsec.Error
 import Control.Monad (guard)
@@ -10,6 +11,7 @@ import qualified Data.Set as S
 import SSA
 import Liveness
 import RegAlloc
+import CodeGen (codeGen)
 import Parser (parseProgram)
 import Text.ParserCombinators.Parsec (sourceColumn)
 import StaticCheck (staticCheck)
@@ -33,10 +35,8 @@ compile s = do
         convert ast = do
             let ir = toSSA ast :: IR AsmReg
             let coloring = colorRegisters ir
-            -- let graph = IGraph 6 (M.fromList [(1, S.fromList[2, 3]), (2, S.fromList[1, 3, 4]), (3, S.fromList[1, 2, 5]), (4, S.fromList[2, 3]), (5, S.fromList[3])])
-            -- let newOrdering = simpOrdering graph
-            -- return . show $ (greedyColoring graph newOrdering :: M.Map RegId AsmReg)
-            return . show $ coloring
+            let code = codeGen (irCode ir) coloring
+            return $ intercalate "\n" code
 
 convertParseError :: ParseError -> CompilerError
 convertParseError pErr = SyntaxError (errPos pErr) (errInfo pErr)
